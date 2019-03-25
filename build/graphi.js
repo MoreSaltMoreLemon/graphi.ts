@@ -1,4 +1,3 @@
-"use strict";
 class Graphi {
     constructor(canvas, offsetX = .1, offsetY = .1, scaleX = .5, scaleY = .5) {
         this.canvas = canvas;
@@ -122,3 +121,4 @@ class Graphi {
         console.log(event.y);
     }
 }
+export { Graphi };

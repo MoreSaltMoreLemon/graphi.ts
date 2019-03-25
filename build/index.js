@@ -1,4 +1,4 @@
-"use strict";
+import { Graphi } from './graphi.ts';
 window.addEventListener("load", main);
 function main() {
     let canvas = document.querySelector("canvas");

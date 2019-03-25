@@ -1,6 +1,5 @@
-
+"use strict";
 // const g = new Graphi(canvas);
-
 // g.axis({
 //   type: "grid",
 //   rotation: 0,
@@ -15,7 +14,6 @@
 //   xUnit: "month",
 //   yUnit: "kg"
 // });
-
 // g.graphLineFromPoints([[0,0],[20, 20],[25, 60]]);
 // // g.lineFromPoints([[0,0],[20, 20],[25, 60]]);
 // g.graph({
@@ -27,7 +25,6 @@
 //       unit: "kg",
 //       color: "red",
 //       zdepth: 0
-
 //     },{
 //       label: "March",
 //       value: 17.0,
@@ -43,7 +40,6 @@
 //     }
 //   ]
 // });
-
 // g.graphFunction(Math.sin);
 // // g.raphFunction(Math.sin);
 // g.function(Math.sin);
