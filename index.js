@@ -12,10 +12,10 @@ function main() {
     // const moarData = [{x: 0, y: 0}, {x: 100, y: 100}, {x: 200, y: 200}, {x: 300, y: 300}]);
     // g.drawLine(moarData, "red");
     const singlePoint = { x: 100, y: 100 };
-    g.drawPoint(singlePoint, 5, "red");
+    g.drawPoint(singlePoint, 5);
     const sine = g.genFn(Math.sin, { x: 0, y: 40 }, canvas.width, 100, 50, 15);
-    g.drawPoints(sine, 2, "blue");
-    g.drawLine(sine, "blue");
+    g.drawPoints(sine, 2);
+    g.drawLine(sine);
     // const cos = g.genFn(Math.cos, {x: 0, y: 40}, canvas.width, 100, 50, 20));
     // g.drawLine(cos);
     // const tan = g.genFn(Math.tan, {x: 0, y: 40}, canvas.width, 100, 50, 20));
