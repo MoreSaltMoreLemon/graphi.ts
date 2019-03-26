@@ -22,29 +22,24 @@ class Graphi {
   canvas: any;
   cx: CanvasRenderingContext2D;
   cv: Function;
-  tr: Function;
-  gr: Function;
+  gra: Function;
+  gri: Function;
   theme: Theme;
   graphedData: {};
-  paddingX: number;
-  paddingY: number;
-  scaleX: number;
-  scaleY: number;
 
   constructor(canvas: HTMLCanvasElement, 
               theme: string|Theme = "default", 
-              paddingX = .1, 
-              paddingY = .1, 
-              scaleX = .5, 
-              scaleY = .5) {
+              gridPercentX = .9, 
+              gridPercentY = .9, 
+              maxX = 30,
+              maxY = 30,
+              minX = 30,
+              minY = 30) {
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
-    this.paddingX = paddingX;
-    this.paddingY = paddingY;
-    this.scaleX = scaleX;
-    this.scaleY = scaleY;
-    this.cv = absoluteCoordOffset(canvas, 0, 0, 0, 0);
-    this.tr = absoluteCoordOffset(canvas, paddingX, paddingY, scaleX, scaleY)
+    this.cv = globalCoord(canvas);
+    this.gra = graphCoord(canvas, this.cv, gridPercentX, gridPercentY);
+    this.gri = gridCoord(this.gra, maxX, maxY, minX, minY);
     this.theme = getTheme(theme); 
     this.graphedData = {};
   }
@@ -54,13 +49,8 @@ class Graphi {
     const width = this.canvas.width;
     const xAxis = [{x: 0, y: height * xPercent}, {x: width, y: height * xPercent}];
     const yAxis = [{x: width * yPercent, y: 0}, {x: width * yPercent, y: height}];
-    console.log("width", this.paddingX, width, xPercent)
-    console.log("height", this.paddingY, height, yPercent)
-    this.gr = absoluteCoordOffset(this.canvas, 
-                                  this.paddingX, // + width * xPercent, 
-                                  this.paddingY, // + height * yPercent, 
-                                  this.scaleX, 
-                                  this.scaleY);
+    console.log("width", width, xPercent)
+    console.log("height", height, yPercent)
     this.drawAxis(xAxis, this.theme.axisColor, 10, 10);
     this.drawAxis(yAxis, this.theme.axisColor, 10, 10);
   }
@@ -72,7 +62,7 @@ class Graphi {
 
   drawPoint(point: Coordinate, radius: number, color: string = ''): void {
     if (color === '') color = this.getCurrentColor();
-    const newPoint = this.gr(point)
+    const newPoint = this.gri(point)
     this.cx.beginPath();
     color = colorize(color);
     this.cx.strokeStyle = color;
@@ -116,12 +106,12 @@ class Graphi {
   transformAll(
     coords: Coordinate[],
     ): Coordinate[] {
-    return coords.map(coord => this.gr(coord));
+    return coords.map(coord => this.gri(coord));
   }
 
   drawLine(
     coords: Coordinate[],
-    color: string = ''
+    color: string|RGBA = ''
     ): void {
     if (color === '') color = this.getNextColor();
     const trCoords = this.transformAll(coords);
@@ -227,12 +217,57 @@ class Graphi {
   }
 }
 
+// this.canvas = canvas;
+// this.cx = canvas.getContext("2d");
+// this.cv = globalCoord(canvas);
+// this.gra = graphCoord(canvas, this.cv, gridPercentX, gridPercentY);
+// this.gri = gridCoord(this.gra, maxX, maxY, minX, minY);
+
+function globalCoord(canvas: HTMLCanvasElement) {
+  return function (coord: Coordinate): Coordinate {
+    const globalSpace = {x: coord.x, y: canvas.height - coord.y}
+    console.log("GLOBAL: ", globalSpace);
+    return globalSpace;
+  };
+}
+
+function graphCoord(canvas: HTMLCanvasElement,
+                    globalCoordFn: Function,
+                    percentX: number,
+                    percentY: number): Coordinate {
+  return function (coord: Coordinate): Coordinate {
+    const graphSpace = {x: coord.x + ((canvas.width * (1 - percentX)) / 2), 
+                        y: coord.y + ((canvas.height * (1 - percentY)) / 2)}
+    console.log("GRAPH: ", graphSpace);
+    return globalCoordFn(graphSpace);
+  }
+}
+
+function gridCoord(graphCoordFn: Function,
+                   maxX: number,
+                   maxY: number,
+                   minX: number,
+                   minY: number): Coordinate {
+  return function (coord: Coordinate): Coordinate {
+    const totalWidth = Math.abs(minX) + maxX;
+    const totalHeight = Math.abs(minY) + maxY;
+    const offsetX = Math.abs(minX);
+    const offsetY = Math.abs(minY);
+    console.log("StartCoord: ", coord);
+    const gridSpace = {x: (coord.x + offsetX) / totalWidth, 
+                       y: (coord.y + offsetY) / totalHeight}
+    console.log("GRID: ", gridSpace);
+    return graphCoordFn(gridSpace);
+  }
+}
+
 function absoluteCoordOffset(
   canvas: HTMLCanvasElement, 
   offsetX: number, offsetY: number, 
   scaleX: number, scaleY: number): Function {
 
   return (coord: Coordinate): Coordinate => {
+
     return {x: (coord.x * scaleX) + (canvas.width * offsetX), 
             y: (canvas.height - ((coord.y * scaleY) + (canvas.height * offsetY)))};
   }
