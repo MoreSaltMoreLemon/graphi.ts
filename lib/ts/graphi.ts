@@ -53,19 +53,22 @@ class Graphi {
   }
 
   drawGrid(unitsPerTick: number = 10): void {
-    const totalXTicks = (this.startX + this.endX) / unitsPerTick
+    const totalXTicks = (Math.abs(this.startX) + this.endX) / unitsPerTick
+    const totalYTicks = (Math.abs(this.startY) + this.endY) / unitsPerTick
+    console.log(totalXTicks, totalYTicks);
     const xAxis = [{x: this.startX, y: 0}, {x: this.endX, y: 0}];
     const yAxis = [{x: 0, y: this.startY}, {x: 0, y: this.endY}];
-    this.drawAxis(xAxis, this.theme.axisColor, 10, 10);
-    this.drawAxis(yAxis, this.theme.axisColor, 10, 10);
+    this.drawAxis(xAxis, this.theme.axisColor, totalXTicks);
+    this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
   }
 
   drawAxis(
     coord: Coordinate[],
     color: string|RGBA,
     tickTotal: number,
-    tickLength: number
   ): void {
+    const tickLength = this.canvas.width / 200;
+
     this.drawLine(coord, color);
     
     const hyp = this.hypotenuse(coord[0], coord[1]);
