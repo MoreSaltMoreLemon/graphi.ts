@@ -52,25 +52,25 @@ class Graphi {
     this.graphedData = {};
   }
 
-  drawGrid(unitsPerTick: number = 10): void {
+  drawGrid(unitsPerTick: number = 10, xAxisLabel: string = '', yAxisLabel: string = ''): void {
     const totalXTicks = (Math.abs(this.startX) + this.endX) / unitsPerTick
     const totalYTicks = (Math.abs(this.startY) + this.endY) / unitsPerTick
 
     const xAxis = [{x: this.startX, y: 0}, {x: this.endX, y: 0}];
     const yAxis = [{x: 0, y: this.startY}, {x: 0, y: this.endY}];
 
-    this.drawAxis(xAxis, this.theme.axisColor, totalXTicks);
-    this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
+    this.drawAxis(xAxis, this.theme.axisColor, totalXTicks, xAxisLabel);
+    this.drawAxis(yAxis, this.theme.axisColor, totalYTicks, yAxisLabel);
   }
 
   drawAxis(
     coord: Coordinate[],
     color: string|RGBA,
     tickTotal: number,
-  ): void {
+    label: string = ''): void {
     const tickLength = this.canvas.width / 200;
 
-    this.drawLine(coord, color);
+    this.drawLine(coord, color, label);
     
     const hyp = hypotenuse(coord[0], coord[1]);
     const angle = angleOfVector(coord[0], coord[1]);
@@ -95,17 +95,22 @@ class Graphi {
         end.y += tickLength / 2;
       }
       
-      // console.log("THE TICK", start, end);
+      
       this.drawLine([start, end], color)
     }
   }
 
-  drawPoints(points: Coordinate[], radius: number = 1, color: string|RGBA = ''): void {
+  drawLineWithPoints(coords: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
+    this.drawLine(coords, color, label);
+    this.drawPoints(coords, radius, color, label);
+  }
+
+  drawPoints(points: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
     if (color === '') color = this.getNextColor();
     for (const point of points) this.drawPoint(point, radius, color);
   }
 
-  drawPoint(point: Coordinate, radius: number = 1, color: string|RGBA = ''): void {
+  drawPoint(point: Coordinate, radius: number = 1, color: string|RGBA = '', label: string = ''): void {
     if (color === '') color = this.getCurrentColor();
     const newPoint = this.tr(point)
     this.cx.beginPath();
@@ -121,7 +126,8 @@ class Graphi {
     fn: Function, 
     amplitude: number = 1, 
     frequency: number = 1, 
-    step: number = 1): Coordinate[] {
+    step: number = 1, 
+    label: string = ''): Coordinate[] {
     const yOfX: Coordinate[] = [];
     for (let x = this.startX; x < this.endX; x += step) {
       yOfX.push({x: x, 
@@ -139,8 +145,8 @@ class Graphi {
   drawBezier(
     coords: Coordinate[],
     color: string|RGBA = '',
-    weight: number = 5
-  ): void {
+    weight: number = 5,
+    label: string = ''): void {
     if (color === '') color = this.getNextColor();
     const cs = this.transformAll(coords);
     if (cs.length === 0) return;
@@ -169,7 +175,7 @@ class Graphi {
   drawLine(
     coords: Coordinate[],
     color: string|RGBA = ''
-    ): void {
+    label: string = ''): void {
     if (color === '') color = this.getNextColor();
     const trCoords = this.transformAll(coords);
     this.cx.strokeStyle = colorize(color);

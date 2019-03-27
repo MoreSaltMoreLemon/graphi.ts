@@ -36,6 +36,8 @@ function main(): void {
   g.drawBezier(sine, '', 30);
   g.drawPoints(sine);
   // g.drawLine(sine);
+
+  g.drawLineWithPoints(sine)
 }
 
 function naturalLog(x: number): number {
