@@ -2,13 +2,10 @@ window.addEventListener("load", main);
 
 function main(): void {
   let canvas = document.querySelector("canvas");
-  let g = new Graphi(canvas);
+  let g = new Graphi(canvas, "default", .95, .95, -50, 200, -50, 200);
   const toTheCorner = [{x: 0, y: 0}, {x: 30, y: 30}];
   g.drawLine(toTheCorner, "magenta")
   g.drawGrid();
-
-  // canvas.addEventListener('mousemove', g.trackPos.bind(g));
-
 
   const data = [{x: 0, y: 0}, {x: 100, y: 10}, {x: 200, y: 20}, {x: 300, y: 30}];
   g.drawLine(data, "blue");
@@ -17,10 +14,10 @@ function main(): void {
   g.drawLine(moarData, "red");
 
   const singlePoint = {x: 100, y: 100};
-  g.drawPoint(singlePoint, 5);
+  g.drawPoint(singlePoint);
   
   const sine = g.genFn(Math.sin, 10, 1, .1);
-  // g.drawPoints(sine, 2);
+  g.drawPoints(sine);
   g.drawLine(sine);
 
   const cos = g.genFn(Math.cos, 20, 5, .2);
@@ -33,9 +30,7 @@ function main(): void {
   g.drawLine(sahir);
   
   const natLog = g.genFn(naturalLog, 20, 5, 1);
-  // console.log(natLog);
   g.drawLine(natLog);
-  // setInterval(() => drawWithResize(canvas), 100)
 }
 
 function naturalLog(x: number): number {

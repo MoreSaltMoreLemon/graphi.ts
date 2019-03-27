@@ -100,11 +100,12 @@ class Graphi {
     }
   }
 
-  drawPoints(points: Coordinate[], radius: number, color: string): void {
+  drawPoints(points: Coordinate[], radius: number = 1, color: string|RGBA = ''): void {
+    if (color === '') color = this.getNextColor();
     for (const point of points) this.drawPoint(point, radius, color);
   }
 
-  drawPoint(point: Coordinate, radius: number, color: string = ''): void {
+  drawPoint(point: Coordinate, radius: number = 1, color: string|RGBA = ''): void {
     if (color === '') color = this.getCurrentColor();
     const newPoint = this.tr(point)
     this.cx.beginPath();
@@ -118,9 +119,9 @@ class Graphi {
 
   genFn(
     fn: Function, 
-    amplitude: number, 
-    frequency: number, 
-    step: number): Coordinate[] {
+    amplitude: number = 1, 
+    frequency: number = 1, 
+    step: number = 1): Coordinate[] {
     const yOfX: Coordinate[] = [];
     for (let x = this.startX; x < this.endX; x += step) {
       yOfX.push({x: x, 
@@ -129,25 +130,17 @@ class Graphi {
     return yOfX;
   }
 
-  genSine(
-      start: Coordinate, 
-      end: number, 
-      amplitude: number, 
-      frequency: number, 
-      step: number): Coordinate[] {
-    const sine: Coordinate[] = [];
-    for (; start.x < end; start.x += step) {
-      sine.push(
-        {x: start.x, 
-        y: Math.sin(start.x / frequency) * amplitude + start.y});
-    }
-    return sine;
-  }
-
   transformAll(
     coords: Coordinate[],
     ): Coordinate[] {
     return coords.map(coord => this.tr(coord));
+  }
+
+  drawBezier(
+    coords: Coordinate[],
+    color: string|RGBA = ''
+  ): void {
+
   }
 
   drawLine(
@@ -164,21 +157,6 @@ class Graphi {
     }
     this.cx.stroke();
   }
-
-  
-
-  
-
-  // TODO: rgb to deselect bad color ranges
-  // randomColorSelector(): string {
-  //   const colors = ["AliceBlue","AntiqueWhite","Aqua","Aquamarine","Azure","Beige","Bisque","Black","BlanchedAlmond","Blue","BlueViolet","Brown","BurlyWood","CadetBlue","Chartreuse","Chocolate","Coral","CornflowerBlue","Cornsilk","Crimson","Cyan","DarkBlue","DarkCyan","DarkGoldenRod","DarkGray","DarkGrey","DarkGreen","DarkKhaki","DarkMagenta","DarkOliveGreen","Darkorange","DarkOrchid","DarkRed","DarkSalmon","DarkSeaGreen","DarkSlateBlue","DarkSlateGray","DarkSlateGrey","DarkTurquoise","DarkViolet","DeepPink","DeepSkyBlue","DimGray","DimGrey","DodgerBlue","FireBrick","FloralWhite","ForestGreen","Fuchsia","Gainsboro","GhostWhite","Gold","GoldenRod","Gray","Grey","Green","GreenYellow","HoneyDew","HotPink","IndianRed","Indigo","Ivory","Khaki","Lavender","LavenderBlush","LawnGreen","LemonChiffon","LightBlue","LightCoral","LightCyan","LightGoldenRodYellow","LightGray","LightGrey","LightGreen","LightPink","LightSalmon","LightSeaGreen","LightSkyBlue","LightSlateGray","LightSlateGrey","LightSteelBlue","LightYellow","Lime","LimeGreen","Linen","Magenta","Maroon","MediumAquaMarine","MediumBlue","MediumOrchid","MediumPurple","MediumSeaGreen","MediumSlateBlue","MediumSpringGreen","MediumTurquoise","MediumVioletRed","MidnightBlue","MintCream","MistyRose","Moccasin","NavajoWhite","Navy","OldLace","Olive","OliveDrab","Orange","OrangeRed","Orchid","PaleGoldenRod","PaleGreen","PaleTurquoise","PaleVioletRed","PapayaWhip","PeachPuff","Peru","Pink","Plum","PowderBlue","Purple","Red","RosyBrown","RoyalBlue","SaddleBrown","Salmon","SandyBrown","SeaGreen","SeaShell","Sienna","Silver","SkyBlue","SlateBlue","SlateGray","SlateGrey","Snow","SpringGreen","SteelBlue","Tan","Teal","Thistle","Tomato","Turquoise","Violet","Wheat","White","WhiteSmoke","Yellow","YellowGreen"];
-  //   let color = colors[Math.floor(Math.random() * colors.length)]
-  //   while (this.colorsInUse.includes(color)) {
-  //     color = colors[Math.floor(Math.random() * colors.length)];
-  //   }
-  //   this.colorsInUse.push(color);
-  //   return color;
-  // }
 
   convertToCoord(coords: []): Coordinate[] {
     if (Array.isArray(coords) && 
@@ -241,7 +219,7 @@ function transform(
 
     let gridY = (c.y + Math.abs(minY)) / (Math.abs(minY) + maxY) * canvas.height;
     let graphY = gridY * percentY + (canvas.height * (1 - percentY)) / 2;
-    let globalY = canvas.height - gridY;
+    let globalY = canvas.height - graphY;
 
     return { x: graphX, y: globalY };
   }
