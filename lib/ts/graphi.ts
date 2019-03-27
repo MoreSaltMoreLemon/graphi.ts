@@ -55,9 +55,10 @@ class Graphi {
   drawGrid(unitsPerTick: number = 10): void {
     const totalXTicks = (Math.abs(this.startX) + this.endX) / unitsPerTick
     const totalYTicks = (Math.abs(this.startY) + this.endY) / unitsPerTick
-    console.log(totalXTicks, totalYTicks);
+
     const xAxis = [{x: this.startX, y: 0}, {x: this.endX, y: 0}];
     const yAxis = [{x: 0, y: this.startY}, {x: 0, y: this.endY}];
+
     this.drawAxis(xAxis, this.theme.axisColor, totalXTicks);
     this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
   }
@@ -71,12 +72,12 @@ class Graphi {
 
     this.drawLine(coord, color);
     
-    const hyp = this.hypotenuse(coord[0], coord[1]);
-    const angle = this.angleOfVector(coord[0], coord[1]);
+    const hyp = hypotenuse(coord[0], coord[1]);
+    const angle = angleOfVector(coord[0], coord[1]);
 
-    const isVertical = this.approxEqual(angle, 1.5707963267948966);
+    const isVertical = approxEqual(angle, 1.5707963267948966);
     
-    const tickSpace = this.endOfVector({x: 0, y: 0}, angle, (hyp / tickTotal));
+    const tickSpace = endOfVector({x: 0, y: 0}, angle, (hyp / tickTotal));
     const base = {x: coord[0].x, y: coord[0].y};
     
     for (let i = 0; i < tickTotal; i++) {
@@ -166,24 +167,7 @@ class Graphi {
 
   
 
-  approxEqual(n1: number, n2: number, epsilon: number = 0.0001): boolean {
-    return Math.abs(n1 - n2) < epsilon;
-  }
-
-  hypotenuse(root: Coordinate, end: Coordinate): number {
-    return Math.hypot(end.x - root.x, end.y - root.y);
-  }
-
-  endOfVector(root: Coordinate, angle: number, hypotenuse: number): Coordinate {
-    const opposite = Math.sin(angle) * hypotenuse;
-    const adjacent = Math.cos(angle) * hypotenuse;
-    
-    return { x: root.x + adjacent, y: root.y + opposite };;
-  }
-
-  angleOfVector(root: Coordinate, end: Coordinate): number {
-    return Math.asin((end.y - root.y) / this.hypotenuse(root, end));
-  }
+  
 
   // TODO: rgb to deselect bad color ranges
   // randomColorSelector(): string {
@@ -223,11 +207,24 @@ class Graphi {
   }
 }
 
-// this.canvas = canvas;
-// this.cx = canvas.getContext("2d");
-// this.cv = globalCoord(canvas);
-// this.gra = graphCoord(canvas, this.cv, gridPercentX, gridPercentY);
-// this.gri = gridCoord(this.gra, maxX, maxY, minX, minY);
+function approxEqual(n1: number, n2: number, epsilon: number = 0.0001): boolean {
+  return Math.abs(n1 - n2) < epsilon;
+}
+
+function hypotenuse(root: Coordinate, end: Coordinate): number {
+  return Math.hypot(end.x - root.x, end.y - root.y);
+}
+
+function endOfVector(root: Coordinate, angle: number, hypotenuse: number): Coordinate {
+  const opposite = Math.sin(angle) * hypotenuse;
+  const adjacent = Math.cos(angle) * hypotenuse;
+  
+  return { x: root.x + adjacent, y: root.y + opposite };;
+}
+
+function angleOfVector(root: Coordinate, end: Coordinate): number {
+  return Math.asin((end.y - root.y) / hypotenuse(root, end));
+}
 
 function transform(
   canvas: HTMLCanvasElement,
