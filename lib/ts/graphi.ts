@@ -21,107 +21,43 @@ declare interface Theme {
 class Graphi {
   canvas: any;
   cx: CanvasRenderingContext2D;
-  cv: Function;
-  gra: Function;
-  gri: Function;
+  tr: Function;
   theme: Theme;
   graphedData: {};
+  gridPercentX: number;
+  gridPercentY: number;
+  startX: number;
+  endX: number;
+  startY: number;
+  endY: number;
 
   constructor(canvas: HTMLCanvasElement, 
               theme: string|Theme = "default", 
               gridPercentX = .9, 
               gridPercentY = .9, 
-              maxX = 30,
-              maxY = 30,
-              minX = 30,
-              minY = 30) {
+              startX = -50,
+              endX = 50,
+              startY = -50,
+              endY = 50) {
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
-    this.cv = globalCoord(canvas);
-    this.gra = graphCoord(canvas, this.cv, gridPercentX, gridPercentY);
-    this.gri = gridCoord(this.gra, maxX, maxY, minX, minY);
+    this.tr = transform(canvas, gridPercentX, gridPercentY, startX, endX, startY, endY);
     this.theme = getTheme(theme); 
+    this.gridPercentX = gridPercentX;
+    this.gridPercentY = gridPercentY;
+    this.startX = startX;
+    this.endX = endX;
+    this.startY = startY;
+    this.endY = endY;
     this.graphedData = {};
   }
 
-  drawGrid(xPercent: number = 0, yPercent: number = 0): void {
-    const height = this.canvas.height;
-    const width = this.canvas.width;
-    const xAxis = [{x: 0, y: height * xPercent}, {x: width, y: height * xPercent}];
-    const yAxis = [{x: width * yPercent, y: 0}, {x: width * yPercent, y: height}];
-    console.log("width", width, xPercent)
-    console.log("height", height, yPercent)
+  drawGrid(unitsPerTick: number = 10): void {
+    const totalXTicks = (this.startX + this.endX) / unitsPerTick
+    const xAxis = [{x: this.startX, y: 0}, {x: this.endX, y: 0}];
+    const yAxis = [{x: 0, y: this.startY}, {x: 0, y: this.endY}];
     this.drawAxis(xAxis, this.theme.axisColor, 10, 10);
     this.drawAxis(yAxis, this.theme.axisColor, 10, 10);
-  }
-
-
-  drawPoints(points: Coordinate[], radius: number, color: string): void {
-    for (const point of points) this.drawPoint(point, radius, color);
-  }
-
-  drawPoint(point: Coordinate, radius: number, color: string = ''): void {
-    if (color === '') color = this.getCurrentColor();
-    const newPoint = this.gri(point)
-    this.cx.beginPath();
-    color = colorize(color);
-    this.cx.strokeStyle = color;
-    this.cx.fillStyle = color;
-    this.cx.arc(newPoint.x, newPoint.y, radius, 0, 2 * Math.PI);
-    this.cx.fill();
-    this.cx.stroke();
-  }
-
-  genFn(
-    fn: Function,
-    start: Coordinate, 
-    end: number, 
-    amplitude: number, 
-    frequency: number, 
-    step: number): Coordinate[] {
-    const yOfX: Coordinate[] = [];
-    for (; start.x < end; start.x += step) {
-      yOfX.push(
-        {x: start.x, 
-          y: fn(start.x / frequency) * amplitude + start.y});
-    }
-    return yOfX;
-  }
-
-  genSine(
-      start: Coordinate, 
-      end: number, 
-      amplitude: number, 
-      frequency: number, 
-      step: number): Coordinate[] {
-    const sine: Coordinate[] = [];
-    for (; start.x < end; start.x += step) {
-      sine.push(
-        {x: start.x, 
-        y: Math.sin(start.x / frequency) * amplitude + start.y});
-    }
-    return sine;
-  }
-
-  transformAll(
-    coords: Coordinate[],
-    ): Coordinate[] {
-    return coords.map(coord => this.gri(coord));
-  }
-
-  drawLine(
-    coords: Coordinate[],
-    color: string|RGBA = ''
-    ): void {
-    if (color === '') color = this.getNextColor();
-    const trCoords = this.transformAll(coords);
-    this.cx.strokeStyle = colorize(color);
-    this.cx.beginPath();
-    this.cx.moveTo(trCoords[0].x, trCoords[0].y);
-    for (const coord of trCoords) {
-      this.cx.lineTo(coord.x, coord.y);
-    }
-    this.cx.stroke();
   }
 
   drawAxis(
@@ -159,6 +95,73 @@ class Graphi {
       this.drawLine([start, end], color)
     }
   }
+
+  drawPoints(points: Coordinate[], radius: number, color: string): void {
+    for (const point of points) this.drawPoint(point, radius, color);
+  }
+
+  drawPoint(point: Coordinate, radius: number, color: string = ''): void {
+    if (color === '') color = this.getCurrentColor();
+    const newPoint = this.tr(point)
+    this.cx.beginPath();
+    color = colorize(color);
+    this.cx.strokeStyle = color;
+    this.cx.fillStyle = color;
+    this.cx.arc(newPoint.x, newPoint.y, radius, 0, 2 * Math.PI);
+    this.cx.fill();
+    this.cx.stroke();
+  }
+
+  genFn(
+    fn: Function, 
+    amplitude: number, 
+    frequency: number, 
+    step: number): Coordinate[] {
+    const yOfX: Coordinate[] = [];
+    for (let x = this.startX; x < this.endX; x += step) {
+      yOfX.push({x: x, 
+                 y: fn(x / frequency) * amplitude});
+    }
+    return yOfX;
+  }
+
+  genSine(
+      start: Coordinate, 
+      end: number, 
+      amplitude: number, 
+      frequency: number, 
+      step: number): Coordinate[] {
+    const sine: Coordinate[] = [];
+    for (; start.x < end; start.x += step) {
+      sine.push(
+        {x: start.x, 
+        y: Math.sin(start.x / frequency) * amplitude + start.y});
+    }
+    return sine;
+  }
+
+  transformAll(
+    coords: Coordinate[],
+    ): Coordinate[] {
+    return coords.map(coord => this.tr(coord));
+  }
+
+  drawLine(
+    coords: Coordinate[],
+    color: string|RGBA = ''
+    ): void {
+    if (color === '') color = this.getNextColor();
+    const trCoords = this.transformAll(coords);
+    this.cx.strokeStyle = colorize(color);
+    this.cx.beginPath();
+    this.cx.moveTo(trCoords[0].x, trCoords[0].y);
+    for (const coord of trCoords) {
+      this.cx.lineTo(coord.x, coord.y);
+    }
+    this.cx.stroke();
+  }
+
+  
 
   approxEqual(n1: number, n2: number, epsilon: number = 0.0001): boolean {
     return Math.abs(n1 - n2) < epsilon;
@@ -223,67 +226,26 @@ class Graphi {
 // this.gra = graphCoord(canvas, this.cv, gridPercentX, gridPercentY);
 // this.gri = gridCoord(this.gra, maxX, maxY, minX, minY);
 
-function globalCoord(canvas: HTMLCanvasElement) {
-  return function (coord: Coordinate): Coordinate {
-    const globalSpace = {x: coord.x, y: canvas.height - coord.y}
-    console.log("GLOBAL: ", globalSpace);
-    return globalSpace;
-  };
-}
+function transform(
+  canvas: HTMLCanvasElement,
+  percentX: number,
+  percentY: number,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number): Function {
+  
+  return function (c: Coordinate): Coordinate {
+    let gridX = (c.x + Math.abs(minX)) / (Math.abs(minX) + maxX) * canvas.width;
+    let graphX = gridX * percentX + (canvas.width * (1 - percentX)) / 2;
 
-function graphCoord(canvas: HTMLCanvasElement,
-                    globalCoordFn: Function,
-                    percentX: number,
-                    percentY: number): Coordinate {
-  return function (coord: Coordinate): Coordinate {
-    const graphSpace = {x: coord.x + ((canvas.width * (1 - percentX)) / 2), 
-                        y: coord.y + ((canvas.height * (1 - percentY)) / 2)}
-    console.log("GRAPH: ", graphSpace);
-    return globalCoordFn(graphSpace);
+    let gridY = (c.y + Math.abs(minY)) / (Math.abs(minY) + maxY) * canvas.height;
+    let graphY = gridY * percentY + (canvas.height * (1 - percentY)) / 2;
+    let globalY = canvas.height - gridY;
+
+    return { x: graphX, y: globalY };
   }
 }
-
-function gridCoord(graphCoordFn: Function,
-                   maxX: number,
-                   maxY: number,
-                   minX: number,
-                   minY: number): Coordinate {
-  return function (coord: Coordinate): Coordinate {
-    const totalWidth = Math.abs(minX) + maxX;
-    const totalHeight = Math.abs(minY) + maxY;
-    const offsetX = Math.abs(minX);
-    const offsetY = Math.abs(minY);
-    console.log("StartCoord: ", coord);
-    const gridSpace = {x: (coord.x + offsetX) / totalWidth, 
-                       y: (coord.y + offsetY) / totalHeight}
-    console.log("GRID: ", gridSpace);
-    return graphCoordFn(gridSpace);
-  }
-}
-
-function absoluteCoordOffset(
-  canvas: HTMLCanvasElement, 
-  offsetX: number, offsetY: number, 
-  scaleX: number, scaleY: number): Function {
-
-  return (coord: Coordinate): Coordinate => {
-
-    return {x: (coord.x * scaleX) + (canvas.width * offsetX), 
-            y: (canvas.height - ((coord.y * scaleY) + (canvas.height * offsetY)))};
-  }
-}
-
-function relativeCoordOffset(
-  canvas: HTMLCanvasElement, 
-  offsetX: number, offsetY: number, 
-  scaleX: number, scaleY: number): Function {
-
-  return (coord: Coordinate): Coordinate => {
-    return {x: (coord.x * scaleX) + (canvas.width * offsetX), 
-            y: (canvas.height - ((coord.y * scaleY) + (canvas.height * offsetY)))};
-  }
-}
-
 
 function colorize(color: string|RGBA): string {
   if (color instanceof Object) return RGBAtoString(color);
