@@ -19,9 +19,10 @@ declare interface Theme {
 }
 
 class Graphi {
-  canvas: any;
+  canvas: HTMLCanvasElement;
   cx: CanvasRenderingContext2D;
   tr: Function;
+  abs: Function;
   theme: Theme;
   graphedData: {};
   gridPercentX: number;
@@ -42,6 +43,7 @@ class Graphi {
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
     this.tr = transform(canvas, gridPercentX, gridPercentY, startX, endX, startY, endY);
+    this.abs = mouseTransform(canvas, gridPercentX, gridPercentY, startX, endX, startY, endY)
     this.theme = getTheme(theme); 
     this.gridPercentX = gridPercentX;
     this.gridPercentY = gridPercentY;
@@ -174,7 +176,7 @@ class Graphi {
 
   drawLine(
     coords: Coordinate[],
-    color: string|RGBA = ''
+    color: string|RGBA = '',
     label: string = ''): void {
     if (color === '') color = this.getNextColor();
     const trCoords = this.transformAll(coords);
@@ -199,7 +201,11 @@ class Graphi {
   }
 
   trackPos(event) {
-    // console.log(event.y);
+    this.canvas.addEventListener('mousemove', (ev) => {
+      // console.log('x:', ev.x, 'y:', ev.y)
+      const abs = this.abs({ x: ev.x, y: ev.y })
+      // console.log('absX:', abs.x, 'absY', abs.y)
+    })
   }
 
   getCurrentColor(): string {
@@ -274,14 +280,60 @@ function transform(
   
   return function (c: Coordinate): Coordinate {
     let gridX = (c.x + Math.abs(minX)) / (Math.abs(minX) + maxX) * canvas.width;
-    let graphX = gridX * percentX + (canvas.width * (1 - percentX)) / 2;
-
+    // let graphX = gridX *  + canvas.width / 2;
+    // let graphX = gridX * percentX + (canvas.width * (1 - percentX)) / 2;
+    
     let gridY = (c.y + Math.abs(minY)) / (Math.abs(minY) + maxY) * canvas.height;
-    let graphY = gridY * percentY + (canvas.height * (1 - percentY)) / 2;
-    let globalY = canvas.height - graphY;
+    // let graphY = gridY *  + canvas.height / 2;
+    // let graphY = gridY * percentY + (canvas.height * (1 - percentY)) / 2;
+    let globalY = canvas.height - gridY;
 
-    return { x: graphX, y: globalY };
+    return { x: gridX, y: globalY };
   }
+}
+
+function mouseTransform(
+  canvas: HTMLCanvasElement,
+  percentX: number,
+  percentY: number,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number): Function {
+
+    return function (c: Coordinate): Coordinate {
+      // canvas.size is the total size (positive integer)
+      // canvas.offset is where the start of the top and left edges are in window space
+      // C Coords are the window space coordinates
+
+      // canvasX is the result of taking the total width and subtracting the result of
+      // mouse position X minus the start of the left side of the canvas
+      const canvasX = c.x - canvas.offsetLeft + window.scrollX;
+      // invert the y value to be in traditional x, y space, where 0, 0 is lower left
+      // rather than upper left
+      const canvasY = canvas.height - (c.y - canvas.offsetTop);
+
+      // removing graph space offset
+      // const graphX = canvasX - ((canvas.width * (1 - percentX)) / 2);
+      // scaling into grid space: total graph space pixels per grid space unit
+      const scaleXFactor = canvas.width / (Math.abs(minX) + maxX);
+      const gridX = (canvasX / scaleXFactor) - Math.abs(minX) + 10;
+
+      // const graphY = (canvasY / percentY) - ((canvas.height * (1 - percentY)) / 2);
+      // const gridY = (canvasY - Math.abs(minY)) * (Math.abs(minY) - maxY) / canvas.height;
+      const scaleYFactor = canvas.height / (Math.abs(minY) + maxY);
+      const gridY = (canvasY / scaleYFactor) - Math.abs(minY) + 1;
+
+      // console.log('canvasX: ', canvasX);
+      // console.log('percentX: ', percentX);
+      // console.log('maxX: ', maxX);
+      // console.log('minX: ', minX);
+      // console.log('canvas width: ', canvas.width);
+      // console.log('offsetX: ', canvas.offsetLeft);
+      // // console.log('graphX: ', graphX);
+      // console.log('scaleXFactor: ', scaleXFactor);
+      return { x: gridX, y: gridY};
+    }
 }
 
 function colorize(color: string|RGBA): string {
