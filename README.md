@@ -12,12 +12,12 @@
 [ ] Points  
 
 ##Project Requirements
-* Single Page App
+<!-- * Single Page App -->
 * 2 domain minimum: one -< to Many
-* HTML/CSS/JS frontend, rails backend
-* use Rails API and page form to generate a resource on backend and display without re-rendering the page.
-* no user Authentication
-* uses Fetch to load AJAX from Rails APi
+<!-- * HTML/CSS/JS frontend, rails backend -->
+<!-- * use Rails API and page form to generate a resource on backend and display without re-rendering the page. -->
+<!-- * no user Authentication -->
+<!-- * uses Fetch to load AJAX from Rails APi -->
 
 
 ##Project goals:
@@ -32,14 +32,14 @@
 * CodeSandbox.io or CodeMirror.net for playground
 
 #Stage 1
-* 1 graph type: line graph
-* accepts form inputs 
-* we supply data
+<!-- * 1 graph type: line graph -->
+<!-- * accepts form inputs  -->
+<!-- * we supply data -->
 * save user inputs 
-* output JS needed to generate form
-  * button copies to clipboard (clipboard.js)
-* github link
-* home page
+<!-- * output JS needed to generate form -->
+  <!-- * button copies to clipboard (clipboard.js) -->
+<!-- * github link -->
+<!-- * home page -->
 * user examples page
 * documentation page for how to use library
   * MPA: md -> html (Rubygem redcarpet)
@@ -47,8 +47,8 @@
   * MPA: md -> html
 
 #Stage 2
-* more graph types: scatter graphs
-* lines with points
+<!-- * more graph types: scatter graphs -->
+<!-- * lines with points -->
 * labels for graphed stuff and axis
 * styling
   * rgb constraints / string
@@ -56,12 +56,12 @@
 
 #Stage 3
 * hover over points, overlay data
-* curved graph lines using bezier curves
+<!-- * curved graph lines using bezier curves -->
 
 #Further Buildout
 * more graph types
 * refine documentation
-* ability to save image?
+<!-- * ability to save image? -->
 * ability to pull from api: give url and code needed to extract the relevant information and it will,
 on load, pull the data down and display it.
 
