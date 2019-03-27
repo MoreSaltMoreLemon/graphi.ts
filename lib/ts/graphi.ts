@@ -138,10 +138,33 @@ class Graphi {
 
   drawBezier(
     coords: Coordinate[],
-    color: string|RGBA = ''
+    color: string|RGBA = '',
+    weight: number = 5
   ): void {
+    if (color === '') color = this.getNextColor();
+    const cs = this.transformAll(coords);
+    if (cs.length === 0) return;
+    if (cs.length < 1) this.drawPoint(cs[0], 2, color);
+    
+    const cx = this.cx;
+    
+    let prevSlope = getSlopeOf(cs[0], cs[1]);
+    for (let i = 1; i < cs.length - 1; i++) {
+      const currSlope = getSlopeOf(cs[i - 1], cs[i + 1]);
+      const prev = cs[i - 1];
+      const curr = cs[i];
+      
+      bezierCurve(cx, prev, prevSlope, curr, currSlope, weight, color);
+      prevSlope = currSlope;
+    }
 
+    const last = cs[cs.length - 1];
+    const nextToLast = cs[cs.length - 2];
+    const endingSlope = getSlopeOf(last, nextToLast);
+    bezierCurve(cx, nextToLast, prevSlope, last, endingSlope, weight);
   }
+
+  
 
   drawLine(
     coords: Coordinate[],
@@ -202,6 +225,36 @@ function endOfVector(root: Coordinate, angle: number, hypotenuse: number): Coord
 
 function angleOfVector(root: Coordinate, end: Coordinate): number {
   return Math.asin((end.y - root.y) / hypotenuse(root, end));
+}
+
+function getSlopeOf(coord1: Coordinate, coord2: Coordinate): number {
+  const x = coord2.x - coord1.x;
+  const y = coord2.y - coord1.y;
+  return y / x;
+}
+
+function bezierCurve(
+  cx: CanvasRenderingContext2D, 
+  start: Coordinate, 
+  startSlope: number, 
+  end: Coordinate, 
+  endSlope: number,
+  weight: number,
+  color: string|RGBA = ''): void {
+
+  cx.beginPath();
+  cx.strokeStyle = colorize(color);
+  cx.moveTo(start.x, start.y);
+  
+  cx.bezierCurveTo(
+    start.x + weight,
+    start.y + weight * startSlope,
+    end.x - weight,
+    end.y - weight * endSlope,
+    end.x,
+    end.y
+  );
+  cx.stroke();
 }
 
 function transform(
