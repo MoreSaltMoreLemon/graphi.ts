@@ -22,47 +22,44 @@ class Graphi {
   canvas: HTMLCanvasElement;
   cx: CanvasRenderingContext2D;
   tr: Function;
-  abs: Function;
+  mouse: Function;
   theme: Theme;
-  graphedData: [];
-  gridPercentX: number;
-  gridPercentY: number;
-  startX: number;
-  endX: number;
-  startY: number;
-  endY: number;
-
+  data: [];
+  settings: {};
+  static ALL: []
   constructor(canvas: HTMLCanvasElement, 
               theme: string|Theme = "default", 
-              gridPercentX = .9, 
-              gridPercentY = .9, 
               startX = -50,
               endX = 50,
               startY = -50,
               endY = 50) {
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
-    this.tr = transform(canvas, gridPercentX, gridPercentY, startX, endX, startY, endY);
-    this.abs = mouseTransform(canvas, gridPercentX, gridPercentY, startX, endX, startY, endY)
+    this.tr = transform(canvas, startX, endX, startY, endY);
+    this.mouse = mouseTransform(canvas, startX, endX, startY, endY)
     this.theme = getTheme(theme); 
-    this.gridPercentX = gridPercentX;
-    this.gridPercentY = gridPercentY;
-    this.startX = startX;
-    this.endX = endX;
-    this.startY = startY;
-    this.endY = endY;
-    this.graphedData = [];
+    this.data = [];
+    this.settings = {canvas: {startX, endX, startY, endY}};
+    this.trackPos();
+    if (Graphi.ALL) Graphi.ALL.forEach(g => g.data = []);
+    Graphi.ALL = [];
+    Graphi.ALL.push(this);
   }
 
   drawGrid(unitsPerTick: number = 10, xAxisLabel: string = '', yAxisLabel: string = ''): void {
-    const totalXTicks = (Math.abs(this.startX) + this.endX) / unitsPerTick
-    const totalYTicks = (Math.abs(this.startY) + this.endY) / unitsPerTick
+    const startX = this.settings.canvas.startX;
+    const endX = this.settings.canvas.endX;
+    const startY = this.settings.canvas.startY;
+    const endY = this.settings.canvas.endY;
+    
+    const totalXTicks = (Math.abs(startX) + endX) / unitsPerTick;
+    const totalYTicks = (Math.abs(startY) + endY) / unitsPerTick;
 
-    const xAxis = [{x: this.startX, y: 0}, {x: this.endX, y: 0}];
-    const yAxis = [{x: 0, y: this.startY}, {x: 0, y: this.endY}];
+    const xAxis = [{x: startX, y: 0}, {x: endX, y: 0}];
+    const yAxis = [{x: 0, y: startY}, {x: 0, y: endY}];
 
-    this.drawAxis(xAxis, this.theme.axisColor, totalXTicks, xAxisLabel);
-    this.drawAxis(yAxis, this.theme.axisColor, totalYTicks, yAxisLabel);
+    this.drawAxis(xAxis, this.theme.axisColor, totalXTicks);
+    this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
   }
 
   drawAxis(
@@ -97,19 +94,20 @@ class Graphi {
         end.y += tickLength / 2;
       }
       
-      
       this.drawLine([start, end], color)
     }
   }
 
   drawLineWithPoints(coords: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
+    
     this.drawLine(coords, color, label);
     this.drawPoints(coords, radius, color, label);
   }
 
-  drawPoints(points: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
+  drawPoints(coords: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
+    this.data.push({coords, radius, color, label})
     if (color === '') color = this.getNextColor();
-    for (const point of points) this.drawPoint(point, radius, color);
+    for (const point of coords) this.drawPoint(point, radius, color);
   }
 
   drawPoint(point: Coordinate, radius: number = 1, color: string|RGBA = '', label: string = ''): void {
@@ -131,7 +129,7 @@ class Graphi {
     step: number = 1, 
     label: string = ''): Coordinate[] {
     const yOfX: Coordinate[] = [];
-    for (let x = this.startX; x < this.endX; x += step) {
+    for (let x = this.settings.canvas.startX; x < this.settings.canvas.endX; x += step) {
       yOfX.push({x: x, 
                  y: fn(x / frequency) * amplitude});
     }
@@ -150,7 +148,7 @@ class Graphi {
     weight: number = 5,
     label: string = ''): void {
 
-    this.graphedData.push({coords, color, weight, label})
+    this.data.push({coords, color, weight, label})
     if (color === '') color = this.getNextColor();
     const cs = this.transformAll(coords);
     if (cs.length === 0) return;
@@ -174,12 +172,11 @@ class Graphi {
     bezierCurve(cx, nextToLast, prevSlope, last, endingSlope, weight);
   }
 
-  
-
   drawLine(
     coords: Coordinate[],
     color: string|RGBA = '',
     label: string = ''): void {
+    if (label !== '') this.data.push({coords, color, label})
     if (color === '') color = this.getNextColor();
     const trCoords = this.transformAll(coords);
     this.cx.strokeStyle = colorize(color);
@@ -202,16 +199,58 @@ class Graphi {
     else throw new Error("convertToCoord: Incorrect format. [[x, y],[x, y]]");
   }
 
-  trackPos(event) {
-    this.canvas.addEventListener('mousemove', (ev) => {
-      const abs = this.abs({ x: ev.x, y: ev.y });
+  trackPos() {
+    this.canvas.removeEventListener('mousemove', displayInfoAtCoord)
+    this.canvas.addEventListener('mousemove', displayInfoAtCoord)
+    const that = this;
+    // debugger;
 
-      const closestCoords = this.graphedData.map(graph => {
-        const coord = nearestCoord(graph.coords, abs)
-        return Object.assign({}, graph, {coord})
-      }).sort((a,b) => hypotenuse(a.coord, abs) - hypotenuse(b.coord, abs))
-      console.log('Closest coords: ', closestCoords[0].coord, abs)
-    })
+    function displayInfoAtCoord (e) {
+      console.log(that.data);
+      const mouse = that.mouse({ x: e.x, y: e.y });
+      
+      const closestGraph = graphWithClosestCoord(that.data, mouse);
+      const closestPoint = closestCoord(closestGraph.coords, mouse);
+
+      // that.clearCanvas();
+      // that.drawPoint(closestPoint, 2, "red");
+      const globalPoint = globalTransform(that.canvas, that.tr, closestPoint);
+
+      let floater = document.querySelector('#floater');
+      let dot = document.querySelector('#dot');
+      if (floater === null) {
+        floater = document.createElement('div');
+        floater.id = "floater"
+        floater.style.position = "absolute";
+        floater.style.textColor = "white"
+        
+        dot = document.createElement('div');
+        dot.id = "dot";
+        dot.style.height = "10px";
+        dot.style.width = "10px";
+        dot.style.backgroundColor = "red";
+        dot.style.borderRadius = "50%";
+        dot.style.position = "absolute";
+        
+        window.document.body.appendChild(floater);
+        window.document.body.appendChild(dot);
+      }
+      floater.textContent = `x:${closestPoint.x.toFixed(2)}, y:${closestPoint.y.toFixed(2)}`;
+      dot.style.top = globalPoint.y - 5;
+      dot.style.left = globalPoint.x - 5;
+      floater.style.top = globalPoint.y + 5;
+      floater.style.left = globalPoint.x + 5;
+    }
+  }
+
+
+
+  clearCanvas() {
+    this.cx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  renderCanvas() {
+    
   }
 
   getCurrentColor(): string {
@@ -283,69 +322,74 @@ function bezierCurve(
 
 function transform(
   canvas: HTMLCanvasElement,
-  percentX: number,
-  percentY: number,
   minX: number,
   maxX: number,
   minY: number,
   maxY: number): Function {
-  
   return function (c: Coordinate): Coordinate {
+    // offset by the minimum grid space, divide by total units to get percent
+    // of length, then multiply by canvas dimension to get location in px
     let gridX = (c.x + Math.abs(minX)) / (Math.abs(minX) + maxX) * canvas.width;
-    // let graphX = gridX *  + canvas.width / 2;
-    // let graphX = gridX * percentX + (canvas.width * (1 - percentX)) / 2;
-    
     let gridY = (c.y + Math.abs(minY)) / (Math.abs(minY) + maxY) * canvas.height;
-    // let graphY = gridY *  + canvas.height / 2;
-    // let graphY = gridY * percentY + (canvas.height * (1 - percentY)) / 2;
+    // invert to compensate for updside down Y axis
     let globalY = canvas.height - gridY;
 
     return { x: gridX, y: globalY };
   }
 }
 
+function globalTransform(
+  canvas: HTMLCanvasElement,
+  transformFn: Function, 
+  coord: Coordinate): Coordinate {
+  const gridSpace: Coordinate = transformFn(coord);
+  return {x: gridSpace.x + canvas.offsetLeft, 
+          y: gridSpace.y + canvas.offsetTop}
+}
+
 function mouseTransform(
   canvas: HTMLCanvasElement,
-  percentX: number,
-  percentY: number,
   minX: number,
   maxX: number,
   minY: number,
   maxY: number): Function {
 
-    return function (c: Coordinate): Coordinate {
-      // canvas.size is the total size (positive integer)
-      // canvas.offset is where the start of the top and left edges are in window space
-      // C Coords are the window space coordinates
+    return function (coord: Coordinate): Coordinate {
+      // transform mouse x,y coordinates to canvas space
+      // subtract the distance from the top left of the window
+      // to the top left of the canvas
+      const canvasX = coord.x - canvas.offsetLeft + window.scrollX;
+      const canvasY = coord.y - canvas.offsetTop + window.scrollY;
 
-      // canvasX is the result of taking the total width and subtracting the result of
-      // mouse position X minus the start of the left side of the canvas
-      const canvasX = c.x - canvas.offsetLeft + window.scrollX;
-      // invert the y value to be in traditional x, y space, where 0, 0 is lower left
-      // rather than upper left
-      const canvasY = canvas.height - (c.y - canvas.offsetTop);
+      // invert the Y axis, so that it is normal x,y space
+      const invertY = canvas.height - canvasY;
 
-      // removing graph space offset
-      // const graphX = canvasX - ((canvas.width * (1 - percentX)) / 2);
-      // scaling into grid space: total graph space pixels per grid space unit
+      // transform to grid space by dividing by the of px/unit
+      // then offsetting by the gridspace minimum
       const scaleXFactor = canvas.width / (Math.abs(minX) + maxX);
-      const gridX = (canvasX / scaleXFactor) - Math.abs(minX) + 10;
+      const gridX = (canvasX / scaleXFactor) + minX;
 
-      // const graphY = (canvasY / percentY) - ((canvas.height * (1 - percentY)) / 2);
-      // const gridY = (canvasY - Math.abs(minY)) * (Math.abs(minY) - maxY) / canvas.height;
       const scaleYFactor = canvas.height / (Math.abs(minY) + maxY);
-      const gridY = (canvasY / scaleYFactor) - Math.abs(minY) + 1;
+      const gridY = (invertY / scaleYFactor) + minY;
 
-      // console.log('canvasX: ', canvasX);
-      // console.log('percentX: ', percentX);
-      // console.log('maxX: ', maxX);
-      // console.log('minX: ', minX);
-      // console.log('canvas width: ', canvas.width);
-      // console.log('offsetX: ', canvas.offsetLeft);
-      // // console.log('graphX: ', graphX);
-      // console.log('scaleXFactor: ', scaleXFactor);
       return { x: gridX, y: gridY};
     }
+}
+
+function closestCoord(coords: Coordinate[], mouse: Coordinate): Coordinate {
+  return coords.sort((a, b) => hypotenuse(a, mouse) - hypotenuse(b, mouse))[0];
+}
+
+function graphWithClosestCoord(graphs: Object[], mouse) {
+  const closestGraph = graphs.reduce((acc, graph) => {
+    const closest = closestCoord(graph.coords, mouse);
+    if (hypotenuse(closest, mouse) < 
+        hypotenuse(acc.closest, mouse)) {
+      return {closest, graph};
+    } else return acc;
+  }, {closest: {x: Infinity, y: Infinity}, graph: {}});
+  
+  return closestGraph.graph;
 }
 
 function colorize(color: string|RGBA): string {
