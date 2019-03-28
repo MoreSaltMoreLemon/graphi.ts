@@ -24,7 +24,7 @@ class Graphi {
   tr: Function;
   abs: Function;
   theme: Theme;
-  graphedData: {};
+  graphedData: [];
   gridPercentX: number;
   gridPercentY: number;
   startX: number;
@@ -51,7 +51,7 @@ class Graphi {
     this.endX = endX;
     this.startY = startY;
     this.endY = endY;
-    this.graphedData = {};
+    this.graphedData = [];
   }
 
   drawGrid(unitsPerTick: number = 10, xAxisLabel: string = '', yAxisLabel: string = ''): void {
@@ -149,6 +149,8 @@ class Graphi {
     color: string|RGBA = '',
     weight: number = 5,
     label: string = ''): void {
+
+    this.graphedData.push({coords, color, weight, label})
     if (color === '') color = this.getNextColor();
     const cs = this.transformAll(coords);
     if (cs.length === 0) return;
@@ -202,9 +204,13 @@ class Graphi {
 
   trackPos(event) {
     this.canvas.addEventListener('mousemove', (ev) => {
-      // console.log('x:', ev.x, 'y:', ev.y)
-      const abs = this.abs({ x: ev.x, y: ev.y })
-      // console.log('absX:', abs.x, 'absY', abs.y)
+      const abs = this.abs({ x: ev.x, y: ev.y });
+
+      const closestCoords = this.graphedData.map(graph => {
+        const coord = nearestCoord(graph.coords, abs)
+        return Object.assign({}, graph, {coord})
+      }).sort((a,b) => hypotenuse(a.coord, abs) - hypotenuse(b.coord, abs))
+      console.log('Closest coords: ', closestCoords[0].coord, abs)
     })
   }
 
@@ -214,10 +220,16 @@ class Graphi {
 
   getNextColor(): string {
     if (this.theme.lastColorIndex >= this.theme.colors.length) this.theme.lastColorIndex = 0;
-    const nextColor = RGBAtoString(this.theme.colors[this.theme.lastColorIndex])
+    const nextColor = RGBAtoString(this.theme.colors[this.theme.lastColorIndex]);
     this.theme.lastColorIndex++;
     return nextColor;
   }
+}
+
+function nearestCoord(coords: Coordinate[], mousePos: Coordinate): Coordinate {
+  const valArray = coords.map(coord => [hypotenuse(coord, mousePos), coord])
+  .sort((a, b) => a[0] - b[0])
+  return valArray[0][1]
 }
 
 function approxEqual(n1: number, n2: number, epsilon: number = 0.0001): boolean {
