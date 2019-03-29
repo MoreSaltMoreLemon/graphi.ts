@@ -66,6 +66,11 @@ class Graphi {
     for (const graph of graphed) this[graph.fn](graph.coords, graph.args);
   }
 
+  clearGrid() {
+    this.clearCanvas();
+    this.drawGrid(this.settings.grid)
+  }
+
   drawGrid(args = {}): void {
     
     const defaults = {
