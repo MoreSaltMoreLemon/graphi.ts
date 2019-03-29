@@ -3,21 +3,6 @@ declare interface Coordinate {
   y: number;
 }
 
-declare interface RGBA {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
-
-declare interface Theme {
-  name: string;
-  backgroundColor: RGBA;
-  axisColor: RGBA;
-  colors: RGBA[];
-  lastColorIndex: number; 
-}
-
 class Graphi {
   canvas: HTMLCanvasElement;
   cx: CanvasRenderingContext2D;
@@ -27,22 +12,33 @@ class Graphi {
   data: [];
   settings: {};
   static ALL: []
-  constructor(canvas: HTMLCanvasElement, 
-              theme: string|Theme = "default", 
-              startX = -50,
-              endX = 50,
-              startY = -50,
-              endY = 50) {
+
+  constructor(
+    canvas: HTMLCanvasElement, 
+    theme: string|Theme = "default", 
+    startX = -50,
+    endX = 50,
+    startY = -50,
+    endY = 50) {
+
+    // get Canvas Context and wipe any prior contents
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
+    this.clearCanvas()
+
+    // generate transform functions for going from local coordinates
+    // to canvas pixels and for going from window pixels to coordinates
     this.tr = transform(canvas, startX, endX, startY, endY);
     this.mouse = mouseTransform(canvas, startX, endX, startY, endY)
+    this.trackPos();
+
+    // store settings for later use (e.g. re-rendering)
+    this.settings = {canvas: {startX, endX, startY, endY}};
     this.theme = getTheme(theme); 
     this.cx.fillStyle = RGBAtoString(this.theme.backgroundColor);
-    this.cx.fillRect(0,0, canvas.width, canvas.height);
+    
     this.data = [];
-    this.settings = {canvas: {startX, endX, startY, endY}};
-    // this.trackPos();
+    
     if (Graphi.ALL) Graphi.ALL.forEach(g => g.data = []);
     Graphi.ALL = [];
     Graphi.ALL.push(this);
@@ -64,7 +60,7 @@ class Graphi {
     this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
   }
 
-  drawAxis(
+  private drawAxis(
     coord: Coordinate[],
     color: string|RGBA,
     tickTotal: number,
@@ -100,48 +96,18 @@ class Graphi {
     }
   }
 
-  drawLineWithPoints(coords: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
-    
-    this.drawLine(coords, color, label);
-    this.drawPoints(coords, radius, color, label);
-  }
-
-  drawPoints(coords: Coordinate[], radius: number = 1, color: string|RGBA = '', label: string = ''): void {
-    this.data.push({coords, radius, color, label})
-    if (color === '') color = this.getNextColor();
-    for (const point of coords) this.drawPoint(point, radius, color);
-  }
-
-  drawPoint(point: Coordinate, radius: number = 1, color: string|RGBA = '', label: string = ''): void {
-    if (color === '') color = this.getCurrentColor();
-    const newPoint = this.tr(point)
-    this.cx.beginPath();
-    color = colorize(color);
-    this.cx.strokeStyle = color;
-    this.cx.fillStyle = color;
-    this.cx.arc(newPoint.x, newPoint.y, radius, 0, 2 * Math.PI);
-    this.cx.fill();
-    this.cx.stroke();
-  }
-
   genFn(
     fn: Function, 
     amplitude: number = 1, 
     frequency: number = 1, 
-    step: number = 1, 
-    label: string = ''): Coordinate[] {
+    step: number = 1): Coordinate[] {
+
     const yOfX: Coordinate[] = [];
     for (let x = this.settings.canvas.startX; x < this.settings.canvas.endX; x += step) {
-      yOfX.push({x: x, 
-                 y: fn(x / frequency) * amplitude});
+      const y = fn(x / frequency) * amplitude;
+      if (y) yOfX.push({x, y});
     }
     return yOfX;
-  }
-
-  transformAll(
-    coords: Coordinate[],
-    ): Coordinate[] {
-    return coords.map(coord => this.tr(coord));
   }
 
   drawBezier(
@@ -150,7 +116,7 @@ class Graphi {
     weight: number = 5,
     label: string = ''): void {
 
-    this.data.push({coords, color, weight, label})
+    this.data.push({fn: "drawBezier", coords, color, weight, label})
     if (color === '') color = this.getNextColor();
     const cs = this.transformAll(coords);
     if (cs.length === 0) return;
@@ -174,11 +140,55 @@ class Graphi {
     bezierCurve(cx, nextToLast, prevSlope, last, endingSlope, weight);
   }
 
+  drawLineWithPoints(
+    coords: Coordinate[], 
+    radius: number = 1, 
+    color: string|RGBA = '', 
+    label: string = ''): void {
+
+    this.drawLine(coords, color, label);
+    this.drawPoints(coords, radius, color, label);
+  }
+
+  drawPoints(
+    coords: Coordinate[], 
+    radius: number = 1,
+    color: string|RGBA = '', 
+    label: string = ''): void {
+
+    this.data.push({fn: "drawPoints", coords, radius, color, label})
+    if (color === '') color = this.getNextColor();
+    for (const point of coords) this.drawPoint(point, radius, color);
+  }
+
+  drawPoint(
+    point: Coordinate, 
+    radius: number = 1, 
+    color: string|RGBA = '', 
+    label: string = ''): void {
+
+    if (color === '') color = this.getCurrentColor();
+    const newPoint = this.tr(point)
+    this.cx.beginPath();
+    
+    color = colorize(color);
+
+    this.cx.strokeStyle = color;
+    this.cx.fillStyle = color;
+    this.cx.arc(newPoint.x, newPoint.y, radius, 0, 2 * Math.PI);
+    this.cx.fill();
+    this.cx.stroke();
+  }
+
   drawLine(
     coords: Coordinate[],
     color: string|RGBA = '',
     label: string = ''): void {
-    if (label !== '') this.data.push({coords, color, label})
+
+    if (label !== '') {
+      console.log("LINE", coords);
+      this.data.push({coords, color, label});
+    }
     if (color === '') color = this.getNextColor();
     const trCoords = this.transformAll(coords);
     this.cx.strokeStyle = colorize(color);
@@ -188,6 +198,12 @@ class Graphi {
       this.cx.lineTo(coord.x, coord.y);
     }
     this.cx.stroke();
+  }
+
+  private transformAll(
+    coords: Coordinate[],
+    ): Coordinate[] {
+    return coords.map(coord => this.tr(coord));
   }
 
   convertToCoord(coords: []): Coordinate[] {
@@ -201,76 +217,53 @@ class Graphi {
     else throw new Error("convertToCoord: Incorrect format. [[x, y],[x, y]]");
   }
 
-  trackPos() {
+  private trackPos() {
     this.canvas.removeEventListener('mousemove', displayInfoAtCoord)
     this.canvas.addEventListener('mousemove', displayInfoAtCoord)
     const that = this;
-    // debugger;
 
     function displayInfoAtCoord (e) {
-      console.log(that.data);
+      if (that.data.length === 0) return;
+      
       const mouse = that.mouse({ x: e.x, y: e.y });
       
       const closestGraph = graphWithClosestCoord(that.data, mouse);
       const closestPoint = closestCoord(closestGraph.coords, mouse);
 
-      // that.clearCanvas();
-      // that.drawPoint(closestPoint, 2, "red");
       const globalPoint = globalTransform(that.canvas, that.tr, closestPoint);
 
       let floater = document.querySelector('#floater');
-      let dot = document.querySelector('#dot');
-      if (floater === null) {
-        floater = document.createElement('div');
-        floater.id = "floater"
-        floater.style.position = "absolute";
-        floater.style.textColor = "white"
-        
-        dot = document.createElement('div');
-        dot.id = "dot";
-        dot.style.height = "10px";
-        dot.style.width = "10px";
-        dot.style.backgroundColor = "red";
-        dot.style.borderRadius = "50%";
-        dot.style.position = "absolute";
-        
-        window.document.body.appendChild(floater);
-        window.document.body.appendChild(dot);
-      }
-      floater.textContent = `x:${closestPoint.x.toFixed(2)}, y:${closestPoint.y.toFixed(2)}`;
-      dot.style.top = globalPoint.y - 5;
-      dot.style.left = globalPoint.x - 5;
+      if (floater === null) renderMouseOverCard.apply(that);
+      
+      
       floater.style.top = globalPoint.y + 5;
       floater.style.left = globalPoint.x + 5;
+      
+      const label = document.querySelector('#floater-label');
+      const values = document.querySelector('#floater-values');
+      label.textContent = closestGraph.label;
+      values.textContent = `x:${closestPoint.x.toFixed(2)}, y:${closestPoint.y.toFixed(2)}`;
+      
+      let dot = document.querySelector('#dot');
+      dot.style.top = globalPoint.y - 5;
+      dot.style.left = globalPoint.x - 5;
     }
   }
 
-
-
-  clearCanvas() {
+  private clearCanvas() {
     this.cx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  renderCanvas() {
-    
-  }
-
-  getCurrentColor(): string {
+  private getCurrentColor(): string {
     return RGBAtoString(this.theme.colors[this.theme.lastColorIndex])
   }
 
-  getNextColor(): string {
+  private getNextColor(): string {
     if (this.theme.lastColorIndex >= this.theme.colors.length) this.theme.lastColorIndex = 0;
     const nextColor = RGBAtoString(this.theme.colors[this.theme.lastColorIndex]);
     this.theme.lastColorIndex++;
     return nextColor;
   }
-}
-
-function nearestCoord(coords: Coordinate[], mousePos: Coordinate): Coordinate {
-  const valArray = coords.map(coord => [hypotenuse(coord, mousePos), coord])
-  .sort((a, b) => a[0] - b[0])
-  return valArray[0][1]
 }
 
 function approxEqual(n1: number, n2: number, epsilon: number = 0.0001): boolean {
@@ -378,7 +371,14 @@ function mouseTransform(
     }
 }
 
+function nearestCoord(coords: Coordinate[], mousePos: Coordinate): Coordinate {
+  const valArray = coords.map(coord => [hypotenuse(coord, mousePos), coord])
+  .sort((a, b) => a[0] - b[0])
+  return valArray[0][1]
+}
+
 function closestCoord(coords: Coordinate[], mouse: Coordinate): Coordinate {
+  if (coords === undefined) debugger;
   return coords.sort((a, b) => hypotenuse(a, mouse) - hypotenuse(b, mouse))[0];
 }
 
@@ -394,6 +394,38 @@ function graphWithClosestCoord(graphs: Object[], mouse) {
   return closestGraph.graph;
 }
 
+function renderMouseOverCard() {
+  const floater = document.createElement('div');
+  floater.id = "floater"
+  floater.style.position = "absolute";
+  floater.style.textColor = RGBAtoString(this.theme.axisColor);
+  const label = document.createElement('p');
+  label.id = "floater-label"
+  const values = document.createElement('p')
+  values.id = "floater-values";
+  floater.appendChild(label);
+  floater.appendChild(values);
+
+  const dot = document.createElement('div');
+  dot.id = "dot";
+  dot.style.height = "10px";
+  dot.style.width = "10px";
+  dot.style.backgroundColor = "red";
+  dot.style.borderRadius = "50%";
+  dot.style.position = "absolute";
+
+  window.document.body.appendChild(floater);
+  window.document.body.appendChild(dot);
+}
+
+// Color Space Management Functions
+declare interface RGBA {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
 function colorize(color: string|RGBA): string {
   if (color instanceof Object) return RGBAtoString(color);
   else return color;
@@ -401,6 +433,16 @@ function colorize(color: string|RGBA): string {
 
 function RGBAtoString(color: RGBA): string {
   return `rgb(${color.r}, ${color.g}, ${color.b})`
+}
+
+
+// Theme Declaration
+declare interface Theme {
+  name: string;
+  backgroundColor: RGBA;
+  axisColor: RGBA;
+  colors: RGBA[];
+  lastColorIndex: number; 
 }
 
 function getTheme(theme: string|Theme) {
@@ -425,6 +467,37 @@ const themes: Theme[] = [
               {r: 77, g: 45, b: 143, a: 1},
               {r: 119, g: 45, b: 143, a: 1},
               {r: 235, g: 37, b: 33, a: 1},],
+    lastColorIndex: 0
+  },
+  {
+    name: "dark",
+    backgroundColor: {r: 31, g: 32, b: 32, a: 1},
+    axisColor: {r: 212, g: 212, b: 206, a: 1},
+    colors: [ {r: 166, g: 226, b: 46, a: 1}, 
+              {r: 174, g: 129, b: 225, a: 1},
+              {r: 249, g: 38, b: 114, a: 1},
+              {r: 102, g: 216, b: 238, a: 1},
+              {r: 226, g: 215, b: 115, a: 1},
+              {r: 196, g: 151, b: 111, a: 1},
+              {r: 156, g: 221, b: 254, a: 1},
+              {r: 245, g: 245, b: 66, a: 1},
+              {r: 30, g: 150, b: 140, a: 1}],
+    lastColorIndex: 0
+  },
+  {
+    name: "light",
+    backgroundColor: {r: 255, g: 255, b: 255, a: 1},
+    axisColor: {r: 210, g: 210, b: 210, a: 1},
+    colors: [ {r: 255, g: 159, b: 108, a: 1}, 
+              {r: 0, g: 126, b: 130, a: 1},
+              {r: 164, g: 65, b: 133, a: 1},
+              {r: 88, g: 124, b: 12, a: 1},
+              {r: 0, g: 63, b: 65, a: 1},
+              {r: 81, g: 48, b: 75, a: 1},
+              {r: 41, g: 25, b: 37, a: 1},
+              {r: 144, g: 89, b: 134, a: 1},
+              {r: 134, g: 164, b: 63, a: 1},
+              {r: 220, g: 124, b: 115, a: 1}],
     lastColorIndex: 0
   }
 ]
