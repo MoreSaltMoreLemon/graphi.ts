@@ -51,6 +51,14 @@ You can use this to implement re-sizing. The canvas width itself *must* be equal
   startY: number,
   endY: number
 }
+
+// e.g.
+const g = new Graphi(canvas, 
+                    {theme: myCustomTheme,
+                     startX: -200,
+                     endX: 500,
+                     startY: 0,
+                     endY: 500});
 ```
 The grid system allows you to define the lowest value and the highest value. For example a quadrant style grid might range from -50 to 50 on each axis, while another might start at 0 and go to 100.
 
@@ -85,6 +93,12 @@ Graphi uses RGBA internally, represented as an object literal:
 ```js
 {r: 73, g: 93, b: 45, a: 1}
 ```
+But you can also use CSS keyword colors in your theme or as the color input for a particular drawing:
+```js
+{
+  colors: ["aliceblue", "blanchedalmond", "gainsboro"]
+}
+```
 
 ###Grid Settings
 ```js
@@ -93,6 +107,48 @@ Graphi uses RGBA internally, represented as an object literal:
   xAxisLabel: string,
   yAxisLabel: string
 }
+
 // e.g.
 g.drawGrid({unitsPerTick: 10, xAxisLabel: "Time", yAxisLabel: "$"});
 ```
+
+###`drawLine`
+The `drawLine()` function will draw a line between a sequential series of coordinates.
+```js
+// settings
+{
+  color: string|{r, g, b, a},
+  label: string
+}
+
+g.drawLine([{x, y}, {x, y}, ...], {color, label});
+```
+
+###`drawPoints`
+The `drawPoints()` function will take a series of coordinates and render a point at each coordinate.
+```js
+// settings
+{
+  radius: number,
+  color: string|{r, g, b, a},
+  label: string
+}
+
+g.drawPoints([{x, y}, {x, y}, ...], {radius, color, label});
+```
+
+###`drawLineWithPoints`
+From the makers of `drawLine` and `drawPoints` comes a brand new feature! It does exactly what it sounds like.
+```js
+// settings
+{
+  radius: number,
+  color: string|{r, g, b, a},
+  label: string
+}
+
+g.drawLineWithPoints([{x, y}, {x, y}, ...], {radius, color, label});
+```
+
+###`drawBezier`
+Instead of drawing linear segments between points, or drawing a curve by generating coordinates with an increasingly small 

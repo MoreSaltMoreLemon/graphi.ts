@@ -526,8 +526,9 @@ function renderMouseOverCard() {
   dot.style.borderRadius = "50%";
   dot.style.position = "absolute";
 
-  window.document.body.appendChild(floater);
-  window.document.body.appendChild(dot);
+  const main = document.querySelector('main')
+  main.appendChild(floater);
+  main.appendChild(dot);
 }
 
 // Color Space Management Functions
