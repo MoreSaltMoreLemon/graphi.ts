@@ -25,7 +25,7 @@ class Graphi {
       endY: 50
     }
     const a = Object.assign({}, defaults, args);
-
+    
     // get Canvas Context and wipe any prior contents
     this.canvas = canvas;
     this.cx = canvas.getContext("2d");
@@ -39,8 +39,13 @@ class Graphi {
 
     // store settings for later use (e.g. re-rendering)
     this.settings = {canvas: a};
-    this.theme = getTheme(a.theme); 
+    if (typeof a.theme === "string") this.theme = getTheme(a.theme); 
+    else this.theme = a.theme;
+    
+    // apply background color
+
     this.cx.fillStyle = RGBAtoString(this.theme.backgroundColor);
+    this.cx.fillRect(0, 0, canvas.width, canvas.height);
     
     // store for graphed functions to re-render contents
     this.data = [];
