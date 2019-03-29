@@ -15,11 +15,16 @@ class Graphi {
 
   constructor(
     canvas: HTMLCanvasElement, 
-    theme: string|Theme = "default", 
-    startX = -50,
-    endX = 50,
-    startY = -50,
-    endY = 50) {
+    args = {}) {
+
+    const defaults = {
+      theme: "default",
+      startX: -50,
+      endX: 50,
+      startY: -50,
+      endY: 50
+    }
+    const a = Object.assign({}, defaults, args);
 
     // get Canvas Context and wipe any prior contents
     this.canvas = canvas;
@@ -28,40 +33,60 @@ class Graphi {
 
     // generate transform functions for going from local coordinates
     // to canvas pixels and for going from window pixels to coordinates
-    this.tr = transform(canvas, startX, endX, startY, endY);
-    this.mouse = mouseTransform(canvas, startX, endX, startY, endY)
+    this.tr = transform(canvas, a.startX, a.endX, a.startY, a.endY);
+    this.mouse = mouseTransform(canvas, a.startX, a.endX, a.startY, a.endY)
     this.trackPos();
 
     // store settings for later use (e.g. re-rendering)
-    this.settings = {canvas: {startX, endX, startY, endY}};
-    this.theme = getTheme(theme); 
+    this.settings = {canvas: a};
+    this.theme = getTheme(a.theme); 
     this.cx.fillStyle = RGBAtoString(this.theme.backgroundColor);
     
+    // store for graphed functions to re-render contents
     this.data = [];
     
-    if (Graphi.ALL) Graphi.ALL.forEach(g => g.data = []);
+    // add new instance to collection
     Graphi.ALL = [];
     Graphi.ALL.push(this);
+    // when a new instance is created, remove past data from all instances
+    // graphi in order to prevent it from lingering for the mouse-over fn
+    if (Graphi.ALL) Graphi.ALL.forEach(g => g.data = []);
+    
   }
 
-  reRenderCanvas() {
+  redrawCanvas() {
+    // copy and reset instance data
+    // will be recreated when each is run
     const graphed = this.data.slice();
     this.data = [];
-
+    
+    // redraw canvas: clear -> grid -> render each fn again
     this.clearCanvas();
-
-    for (const fn of graphed) this[fn](...fn.args);
+    this.drawGrid(this.settings.grid)
+    for (const graph of graphed) this[graph.fn](graph.coords, graph.args);
   }
 
-  drawGrid(unitsPerTick: number = 10, xAxisLabel: string = '', yAxisLabel: string = ''): void {
+  drawGrid(args = {}): void {
+    
+    const defaults = {
+      unitsPerTick: 10,
+      xAxisLabel: 'x',
+      yAxisLabel: 'y'
+    }
+    const a = Object.assign({}, defaults, args);
+    this.settings.grid = a;  // save settings for re-rendering
+    
+    // wasteful code to make clearer
     const startX = this.settings.canvas.startX;
     const endX = this.settings.canvas.endX;
     const startY = this.settings.canvas.startY;
     const endY = this.settings.canvas.endY;
     
-    const totalXTicks = (Math.abs(startX) + endX) / unitsPerTick;
-    const totalYTicks = (Math.abs(startY) + endY) / unitsPerTick;
+    // total number of units / units per tick -> total ticks per axis
+    const totalXTicks = (Math.abs(startX) + endX) / a.unitsPerTick;
+    const totalYTicks = (Math.abs(startY) + endY) / a.unitsPerTick;
 
+    // axis coordinates for length of canvas
     const xAxis = [{x: startX, y: 0}, {x: endX, y: 0}];
     const yAxis = [{x: 0, y: startY}, {x: 0, y: endY}];
 
@@ -74,18 +99,27 @@ class Graphi {
     color: string|RGBA,
     tickTotal: number,
     label: string = ''): void {
-    const tickLength = this.canvas.width / 200;
 
+      
+    // draw axis line
     this.drawSegment(coord, color);
     
+    // Draw Ticks:
+    // get direction of axis
     const hyp = hypotenuse(coord[0], coord[1]);
     const angle = angleOfVector(coord[0], coord[1]);
-
     const isVertical = approxEqual(angle, 1.5707963267948966);
     
+    // calculate length of tick and the offset per vector
+    // more complicated this way, but vertical/horizontal agnostic
+    const tickLength = this.canvas.width / 200;
     const tickSpace = endOfVector({x: 0, y: 0}, angle, (hyp / tickTotal));
+
+    // start at root of axis
     const base = {x: coord[0].x, y: coord[0].y};
     
+    // for each tick draw line segment offset by 1/2 of tickLength
+    // on either side of the tick point
     for (let i = 0; i < tickTotal; i++) {
       base.x += isVertical ? 0: tickSpace.x;
       base.y += isVertical ? tickSpace.y: 0;
@@ -105,31 +139,73 @@ class Graphi {
     }
   }
 
+  // Generate Coordinates based upon an arbitrary function
+  // for the length of the x axis. Can be then rendered as desired.
   genFn(
     fn: Function, 
-    amplitude: number = 1, 
-    frequency: number = 1, 
-    step: number = 1): Coordinate[] {
+    args = {}): Coordinate[] {
+
+    const defaults = {
+      amplitude: 1,
+      frequency: 1,
+      step: 1
+    }
+    const a = Object.assign({}, defaults, args);
 
     const yOfX: Coordinate[] = [];
-    for (let x = this.settings.canvas.startX; x < this.settings.canvas.endX; x += step) {
-      const y = fn(x / frequency) * amplitude;
+    for (let x = this.settings.canvas.startX; x < this.settings.canvas.endX; x += a.step) {
+      const y = fn(x / a.frequency) * a.amplitude;
       if (y) yOfX.push({x, y});
     }
     return yOfX;
   }
 
+  drawBar(
+    coord: Coordinate,
+    args = {}) {
+    
+    this.data.push({fn: "drawBar", coord, args})
+  
+    const defaults = {
+      color: '',
+      width: 10,
+      label: ''
+    }
+    const a = Object.assign({}, defaults, args);
+
+    if (a.color === '') a.color = this.getNextColor();
+    
+    console.log("TOPLEFT: ", {x: coord.x - (a.width / 2), y: coord.y});
+    console.log("BOTTOMRIGHT: ", {x: coord.x + (a.width / 2), y: 0});
+
+    const topLeft = this.tr({x: coord.x - (a.width / 2), y: coord.y});
+    const bottomRight = this.tr({x: a.width, y: 0});
+    console.log("ZEROZERO", this.tr({x: 0, y: 0}));
+    console.log("TOPLEFTTR: ", topLeft);
+    console.log("BOTTOMRIGHTTR: ", bottomRight);
+    const cx = this.cx;
+    
+    cx.rect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+    cx.stroke();
+    
+  }
+
   drawBezier(
     coords: Coordinate[],
-    color: string|RGBA = '',
-    weight: number = 5,
-    label: string = ''): void {
+    args = {}): void {
+    this.data.push({fn: "drawBezier", coords, args})
+    
+    const defaults = {
+      color: '',
+      weight: 5,
+      label: ''
+    }
+    const a = Object.assign({}, defaults, args);
 
-    this.data.push({fn: "drawBezier", args: [coords, color, weight, label]})
-    if (color === '') color = this.getNextColor();
+    if (a.color === '') a.color = this.getNextColor();
     const cs = this.transformAll(coords);
     if (cs.length === 0) return;
-    if (cs.length < 1) this.drawPoint(cs[0], 2, color);
+    if (cs.length < 1) this.drawPoint(cs[0], 2, a.color);
     
     const cx = this.cx;
     
@@ -139,36 +215,50 @@ class Graphi {
       const prev = cs[i - 1];
       const curr = cs[i];
       
-      bezierCurve(cx, prev, prevSlope, curr, currSlope, weight, color);
+      bezierCurve(cx, prev, prevSlope, curr, currSlope, a.weight, a.color);
       prevSlope = currSlope;
     }
 
     const last = cs[cs.length - 1];
     const nextToLast = cs[cs.length - 2];
     const endingSlope = getSlopeOf(last, nextToLast);
-    bezierCurve(cx, nextToLast, prevSlope, last, endingSlope, weight);
+    bezierCurve(cx, nextToLast, prevSlope, last, endingSlope, a.weight);
   }
 
   drawLineWithPoints(
     coords: Coordinate[], 
-    radius: number = 1, 
-    color: string|RGBA = '', 
-    label: string = ''): void {
+    args = {}): void {
+    this.data.push({fn: "drawLineWithPoints", coords, args})
 
-    this.drawSegment(coords, color);
-    this.drawPoints(coords, radius, color, label);
+    const defaults = {
+      radius: 1,
+      color: '',
+      label: ''
+    }
+    const a = Object.assign({}, defaults, args);
+    
+    if (a.color === '') a.color = this.getNextColor();
+
+    this.drawSegment(coords, a.color);
+    for (const point of coords) this.drawPoint(point, a.radius, a.color);
   }
 
   drawPoints(
     coords: Coordinate[], 
-    radius: number = 1,
-    color: string|RGBA = '', 
-    label: string = ''): void {
+    args = {}): void {
 
-    this.data.push({fn: "drawPoints", args: [coords, radius, color, label]})
-    if (color === '') color = this.getNextColor();
+    this.data.push({fn: "drawPoints", coords, args});
 
-    for (const point of coords) this.drawPoint(point, radius, color);
+    const defaults = {
+      radius: 1,
+      color: '',
+      label: ''
+    }
+    const a = Object.assign({}, defaults, args);
+    
+    if (a.color === '') a.color = this.getNextColor();
+
+    for (const point of coords) this.drawPoint(point, a.radius, a.color);
   }
 
   private drawPoint(
@@ -191,13 +281,18 @@ class Graphi {
 
   drawLine(
     coords: Coordinate[],
-    color: string|RGBA = '',
-    label: string = ''): void {
+    args = {}): void {
 
-    this.data.push({fn: "drawLine", args: [coords, color, label]});
+    this.data.push({fn: "drawLine", coords, args});
+
+    const defaults = {
+      color: '',
+      label: ''
+    }
+    const a = Object.assign({}, defaults, args);
     
-    if (color === '') color = this.getNextColor();
-    this.drawSegment(coords, color);
+    if (a.color === '') a.color = this.getNextColor();
+    this.drawSegment(coords, a.color);
   }
 
   private drawSegment(coords: Coordinate[], color: string): void {
@@ -237,27 +332,33 @@ class Graphi {
       if (that.data.length === 0) return;
       
       const mouse = that.mouse({ x: e.x, y: e.y });
-      
-      // const closestGraph = graphWithClosestCoord(that.data, mouse);
-      // const closestPoint = closestCoord(closestGraph.args[0], mouse);
 
       const closestGraph = graphWithClosestCoord(that.data, mouse);
       const closestPoint = closestGraph.closest;
-      // const closestPoint = closestCoord(closestGraph.args[0], mouse);
-
       const globalPoint = globalTransform(that.canvas, that.tr, closestPoint);
 
       let floater = document.querySelector('#floater');
-      if (floater === null) renderMouseOverCard.apply(that);
-      
+      if (floater === null) {
+        renderMouseOverCard.apply(that);
+        floater = document.querySelector('#floater');
+      }
       
       floater.style.top = globalPoint.y + 5;
       floater.style.left = globalPoint.x + 5;
       
       const label = document.querySelector('#floater-label');
+      const labelText = closestGraph.graph.args.label;
+
+      if (!!labelText) {
+        label.style.display = "initial"
+        label.textContent = labelText;
+      } else {
+        label.style.display = "none";
+        label.textContent = "";
+      }
+      
       const values = document.querySelector('#floater-values');
-      // label.textContent = closestGraph.graph.label;
-      values.textContent = `x:${closestPoint.x.toFixed(2)}, y:${closestPoint.y.toFixed(2)}`;
+      values.textContent = `${that.settings.grid.xAxisLabel}:${closestPoint.x.toFixed(2)}, ${that.settings.grid.yAxisLabel}:${closestPoint.y.toFixed(2)}`;
       
       let dot = document.querySelector('#dot');
       dot.style.top = globalPoint.y - 5;
@@ -267,10 +368,6 @@ class Graphi {
 
   private clearCanvas() {
     this.cx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-
-  private getCurrentColor(): string {
-    return RGBAtoString(this.theme.colors[this.theme.lastColorIndex])
   }
 
   private getNextColor(): string {
@@ -386,20 +483,15 @@ function mouseTransform(
     }
 }
 
-function nearestCoord(coords: Coordinate[], mousePos: Coordinate): Coordinate {
-  const valArray = coords.map(coord => [hypotenuse(coord, mousePos), coord])
-  .sort((a, b) => a[0] - b[0])
-  return valArray[0][1]
-}
-
 function closestCoord(coords: Coordinate[], mouse: Coordinate): Coordinate {
-  if (coords === undefined) debugger;
-  return coords.sort((a, b) => hypotenuse(a, mouse) - hypotenuse(b, mouse))[0];
+  const shallowCopy = coords.slice();
+  if (shallowCopy === undefined) debugger;
+  return shallowCopy.sort((a, b) => hypotenuse(a, mouse) - hypotenuse(b, mouse))[0];
 }
 
 function graphWithClosestCoord(graphs: Object[], mouse) {
   const closestGraph = graphs.reduce((acc, graph) => {
-    const closest = closestCoord(graph.args[0], mouse); //coords, mouse);
+    const closest = closestCoord(graph.coords, mouse);
     if (hypotenuse(closest, mouse) < 
         hypotenuse(acc.closest, mouse)) {
       return {closest, graph};
