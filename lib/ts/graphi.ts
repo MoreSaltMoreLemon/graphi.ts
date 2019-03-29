@@ -335,7 +335,7 @@
       else throw new Error("convertToCoord: Incorrect format. [[x, y],[x, y]]");
     }
 
-    dataFromAPI(url: string, dataFn: Function) {
+    dataFromAPI(url: string, dataFn: Function, args = {}) {
 
     }
 
