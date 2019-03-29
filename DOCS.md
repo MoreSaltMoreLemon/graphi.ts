@@ -151,4 +151,6 @@ g.drawLineWithPoints([{x, y}, {x, y}, ...], {radius, color, label});
 ```
 
 ###`drawBezier`
-Instead of drawing linear segments between points, or drawing a curve by generating coordinates with an increasingly small 
+Instead of drawing linear segments between points, or drawing a curve by generating coordinates with an increasingly small segment length, you can use bezier curves to smoothly transition between points.
+
+Bezier curves have a `weight` property which is used to determine how 

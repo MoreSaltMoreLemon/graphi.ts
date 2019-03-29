@@ -59,6 +59,7 @@ class Graphi {
     // will be recreated when each is run
     const graphed = this.data.slice();
     this.data = [];
+    const a = this.settings.canvas;
     
     // redraw canvas: clear -> grid -> render each fn again
     this.clearCanvas();
@@ -328,6 +329,41 @@ class Graphi {
     else throw new Error("convertToCoord: Incorrect format. [[x, y],[x, y]]");
   }
 
+  dataFromAPI(url: string, dataFn: Function) {
+
+  }
+
+  // JSON Address Format
+// { "address_components" : 
+//   [ 
+//     { 
+//       "long_name" : "A", 
+//       "short_name" : "A", 
+//       "types" : 
+//         ["subpremise"] 
+//     }, 
+//     { 
+//       "long_name" : "401", 
+//       "short_name" : "401", 
+//       "types" : [ "street_number" ] }, 
+//     // ....
+//   ], 
+//   "formatted_address" : "401 Clinton St A, Hempstead, NY 11550, USA", 
+//   "geometry" : 
+//     { 
+//       "location" : { "lat" : 40.7180894, "lng" : -73.6209143 }, 
+//       "location_type" : "ROOFTOP", 
+//       "viewport" : 
+//         { 
+//           "northeast" : { "lat" : 40.7194383802915, "lng" : -73.61956531970849 }, 
+//           "southwest" : { "lat" : 40.7167404197085, "lng" : -73.62226328029151 } 
+//         } 
+//     }, 
+//   "place_id" : "ChIJk4fLLhJ9wokRguHJpc4ziH8", 
+//   "plus_code" : { "compound_code" : "P99H+6J Hempstead, NY, United States", "global_code" : "87G8P99H+6J" }, 
+//   "types" : [ "establishment", "food", "point_of_interest", "store" ] 
+// } 
+
   private trackPos() {
     this.canvas.removeEventListener('mousemove', displayInfoAtCoord)
     this.canvas.addEventListener('mousemove', displayInfoAtCoord)
@@ -348,6 +384,7 @@ class Graphi {
         floater = document.querySelector('#floater');
       }
       
+
       floater.style.top = globalPoint.y + 5;
       floater.style.left = globalPoint.x + 5;
       
@@ -454,9 +491,15 @@ function globalTransform(
   canvas: HTMLCanvasElement,
   transformFn: Function, 
   coord: Coordinate): Coordinate {
+
   const gridSpace: Coordinate = transformFn(coord);
-  return {x: gridSpace.x + canvas.offsetLeft, 
-          y: gridSpace.y + canvas.offsetTop}
+  const paddingTop =  parseInt(getElementProperty(canvas, "paddingTop"));
+  const paddingRight = parseInt(getElementProperty(canvas, "paddingRight"));
+  const paddingBottom =  parseInt(getElementProperty(canvas, "paddingBottom"));
+  const paddingLeft = parseInt(getElementProperty(canvas, "paddingLeft"));
+
+  return {x: gridSpace.x * ((canvas.offsetWidth - (paddingLeft + paddingRight)) / canvas.width) + canvas.offsetLeft + paddingLeft, 
+          y: gridSpace.y * ((canvas.offsetHeight - (paddingTop + paddingBottom)) / canvas.height) + canvas.offsetTop + paddingTop}
 }
 
 function mouseTransform(
@@ -529,6 +572,25 @@ function renderMouseOverCard() {
   const main = document.querySelector('main')
   main.appendChild(floater);
   main.appendChild(dot);
+}
+
+function getElementProperty(element: HTMLElement, property: string): any {
+  return window.getComputedStyle(element)[property];
+}
+
+function httpRequest(url, method='GET', data={}) {
+  const init = {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    method: method,
+    body: JSON.stringify(data)
+  }
+  if (method.toLowerCase() === 'get') delete init.body;
+  if (method.toLowerCase() === 'post' && init.body.id) delete init.body.id;
+  
+  return fetch( url, init);
 }
 
 // Color Space Management Functions
