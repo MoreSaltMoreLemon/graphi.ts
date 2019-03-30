@@ -1,7 +1,13 @@
 (function anonymousGraphiIIFE(window) {
-    declare interface Coordinate {
+  interface Coordinate {
     x: number;
     y: number;
+  }
+
+  interface DrawData {
+    fn: Function;
+    coords: Coordinate[];
+    args: {};
   }
 
   class Graphi {
@@ -10,13 +16,22 @@
     tr: Function;
     mouse: Function;
     theme: Theme;
-    data: [];
-    settings: {};
+    data: DrawData[];
+    settings: {
+      canvas?: {},
+      grid?: {}
+    };
     static ALL: []
 
     constructor(
       canvas: HTMLCanvasElement, 
-      args = {}) {
+      args: {
+        theme?: string,
+        startX?: number,
+        endX?: number,
+        startY?: number,
+        endY?: number
+      } = {}) {
 
       const defaults = {
         theme: "default",
@@ -78,7 +93,11 @@
       this.drawGrid(this.settings.grid)
     }
 
-    drawGrid(args = {}): void {
+    drawGrid(args: {
+      unitsPerTick?: string,
+      xAxisLabel?: string,
+      yAxisLabel?: string
+      } = {}): void {
       
       const defaults = {
         unitsPerTick: 10,
@@ -155,7 +174,11 @@
     // for the length of the x axis. Can be then rendered as desired.
     genFn(
       fn: Function, 
-      args = {}): Coordinate[] {
+      args: {
+        amplitude?: number,
+        frequency?: number,
+        step?: number
+      } = {}): Coordinate[] {
 
       const defaults = {
         amplitude: 1,
@@ -174,7 +197,11 @@
 
     drawBar(
       coord: Coordinate,
-      args = {}) {
+      args: {
+        color?: string,
+        width?: number,
+        label?: string
+      } = {}) {
       
       this.data.push({fn: "drawBar", coord, args})
     
@@ -186,20 +213,14 @@
       const a = Object.assign({}, defaults, args);
 
       if (a.color === '') a.color = this.getNextColor();
-      
-      console.log("TOPLEFT: ", {x: coord.x - (a.width / 2), y: coord.y});
-      console.log("BOTTOMRIGHT: ", {x: coord.x + (a.width / 2), y: 0});
 
       const topLeft = this.tr({x: coord.x - (a.width / 2), y: coord.y});
       const bottomRight = this.tr({x: a.width, y: 0});
-      console.log("ZEROZERO", this.tr({x: 0, y: 0}));
-      console.log("TOPLEFTTR: ", topLeft);
-      console.log("BOTTOMRIGHTTR: ", bottomRight);
+      
       const cx = this.cx;
       
       cx.rect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
       cx.stroke();
-      
     }
 
     drawBezier(
@@ -600,7 +621,7 @@
   }
 
   // Color Space Management Functions
-  declare interface RGBA {
+  interface RGBA {
     r: number;
     g: number;
     b: number;
@@ -618,7 +639,7 @@
 
 
   // Theme Declaration
-  declare interface Theme {
+  interface Theme {
     name: string;
     backgroundColor: RGBA;
     axisColor: RGBA;
