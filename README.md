@@ -198,7 +198,7 @@ This may be needed in the event of CSS resizing where you've altered the proport
 ###`recalcCoordSystems`
 While this shouldn't be a concern, if the mouseover highlighting starts skewing, try running this function after whatever events are causing the funkiness.
 ```js
-g.recaclCoordSystems()
+g.recalcCoordSystems()
 ```
 
 ###`clearGrid`
