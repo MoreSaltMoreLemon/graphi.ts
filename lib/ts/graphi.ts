@@ -5,9 +5,9 @@
   }
 
   interface DrawData {
-    fn: Function;
+    fn: string;
     coords: Coordinate[];
-    args: {};
+    options: {};
   }
 
   class Graphi {
@@ -18,14 +18,26 @@
     theme: Theme;
     data: DrawData[];
     settings: {
-      canvas?: {},
-      grid?: {}
+      canvas?: {
+        theme: string,
+        startX: number,
+        endX: number,
+        startY: number,
+        endY: number
+      },
+      grid?: {
+        unitsPerTick: string,
+        xAxisLabel: string,
+        yAxisLabel: string
+      }
     };
+
+    // Holds collection of all Graphi instances
     static ALL: []
 
     constructor(
       canvas: HTMLCanvasElement, 
-      args: {
+      options: {
         theme?: string,
         startX?: number,
         endX?: number,
@@ -33,14 +45,8 @@
         endY?: number
       } = {}) {
 
-      const defaults = {
-        theme: "default",
-        startX: -50,
-        endX: 50,
-        startY: -50,
-        endY: 50
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {theme: "default", startX: -50, endX: 50, startY: -50, endY: 50}
+      const a = Object.assign({}, defaults, options);
       
       // get Canvas Context and wipe any prior contents
       this.canvas = canvas;
@@ -78,48 +84,45 @@
     redrawCanvas() {
       // copy and reset instance data
       // will be recreated when each is run
-      const graphed = this.data.slice();
+      const graphed: DrawData[] = this.data.slice();
       this.data = [];
       const a = this.settings.canvas;
       
       // redraw canvas: clear -> grid -> render each fn again
       this.clearCanvas();
       this.drawGrid(this.settings.grid)
-      for (const graph of graphed) this[graph.fn](graph.coords, graph.args);
+      for (const graph of graphed) this[graph.fn](graph.coords, graph.options);
     }
 
+    // Clears canvas and redraws grid from existing settings
     clearGrid() {
       this.clearCanvas();
       this.drawGrid(this.settings.grid)
     }
 
-    drawGrid(args: {
+
+    drawGrid(options: {
       unitsPerTick?: string,
       xAxisLabel?: string,
       yAxisLabel?: string
       } = {}): void {
       
-      const defaults = {
-        unitsPerTick: 10,
-        xAxisLabel: 'x',
-        yAxisLabel: 'y'
-      }
-      const a = Object.assign({}, defaults, args);
-      this.settings.grid = a;  // save settings for re-rendering
+      const defaults = {unitsPerTick: 10, xAxisLabel: 'x', yAxisLabel: 'y'}
+      const a = Object.assign({}, defaults, options);
+
+      // save settings for re-rendering
+      this.settings.grid = a;  
       
-      // wasteful code to make clearer
-      const startX = this.settings.canvas.startX;
-      const endX = this.settings.canvas.endX;
-      const startY = this.settings.canvas.startY;
-      const endY = this.settings.canvas.endY;
+      // used to abbriate code for clarity
+      const c = this.settings.canvas;
       
       // total number of units / units per tick -> total ticks per axis
-      const totalXTicks = (Math.abs(startX) + endX) / a.unitsPerTick;
-      const totalYTicks = (Math.abs(startY) + endY) / a.unitsPerTick;
+      const totalXTicks = (Math.abs(c.startX) + c.endX) / a.unitsPerTick;
+      const totalYTicks = (Math.abs(c.startY) + c.endY) / a.unitsPerTick;
 
       // axis coordinates for length of canvas
-      const xAxis = [{x: startX, y: 0}, {x: endX, y: 0}];
-      const yAxis = [{x: 0, y: startY}, {x: 0, y: endY}];
+      const xAxis = [{x: c.startX, y: 0}, {x: c.endX, y: 0}];
+      const yAxis = [{x: 0, y: c.startY}, {x: 0, y: c.endY}];
 
       this.drawAxis(xAxis, this.theme.axisColor, totalXTicks);
       this.drawAxis(yAxis, this.theme.axisColor, totalYTicks);
@@ -174,18 +177,14 @@
     // for the length of the x axis. Can be then rendered as desired.
     genFn(
       fn: Function, 
-      args: {
+      options: {
         amplitude?: number,
         frequency?: number,
         step?: number
       } = {}): Coordinate[] {
 
-      const defaults = {
-        amplitude: 1,
-        frequency: 1,
-        step: 1
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {amplitude: 1, frequency: 1, step: 1}
+      const a = Object.assign({}, defaults, options);
 
       const yOfX: Coordinate[] = [];
       for (let x = this.settings.canvas.startX; x < this.settings.canvas.endX; x += a.step) {
@@ -197,20 +196,16 @@
 
     drawBar(
       coord: Coordinate,
-      args: {
+      options: {
         color?: string,
         width?: number,
         label?: string
       } = {}) {
       
-      this.data.push({fn: "drawBar", coord, args})
+      this.data.push({fn: "drawBar", coord, options})
     
-      const defaults = {
-        color: '',
-        width: 10,
-        label: ''
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {color: '', width: 10, label: ''}
+      const a = Object.assign({}, defaults, options);
 
       if (a.color === '') a.color = this.getNextColor();
 
@@ -225,15 +220,11 @@
 
     drawBezier(
       coords: Coordinate[],
-      args = {}): void {
-      this.data.push({fn: "drawBezier", coords, args})
+      options = {}): void {
+      this.data.push({fn: "drawBezier", coords, options})
       
-      const defaults = {
-        color: '',
-        weight: 5,
-        label: ''
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {color: '', weight: 5, label: ''}
+      const a = Object.assign({}, defaults, options);
 
       if (a.color === '') a.color = this.getNextColor();
       const cs = this.transformAll(coords);
@@ -260,15 +251,15 @@
 
     drawLineWithPoints(
       coords: Coordinate[], 
-      args = {}): void {
-      this.data.push({fn: "drawLineWithPoints", coords, args})
+      options: {
+        radius?: number,
+        color?: string,
+        label?: string
+      } = {}): void {
+      this.data.push({fn: "drawLineWithPoints", coords, options})
 
-      const defaults = {
-        radius: 1,
-        color: '',
-        label: ''
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {radius: 1, color: '', label: ''}
+      const a = Object.assign({}, defaults, options);
       
       if (a.color === '') a.color = this.getNextColor();
 
@@ -278,16 +269,16 @@
 
     drawPoints(
       coords: Coordinate[], 
-      args = {}): void {
+      options: {
+        color?: string|RGBA,
+        width?: number,
+        label?: string
+      } = {}): void {
 
-      this.data.push({fn: "drawPoints", coords, args});
+      this.data.push({fn: "drawPoints", coords, options});
 
-      const defaults = {
-        radius: 1,
-        color: '',
-        label: ''
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {radius: 1, color: '', label: ''}
+      const a = Object.assign({}, defaults, options);
       
       if (a.color === '') a.color = this.getNextColor();
 
@@ -314,21 +305,21 @@
 
     drawLine(
       coords: Coordinate[],
-      args = {}): void {
+      options: {
+        color?: string,
+        label?: string
+      } = {}): void {
 
-      this.data.push({fn: "drawLine", coords, args});
+      this.data.push({fn: "drawLine", coords, options});
 
-      const defaults = {
-        color: '',
-        label: ''
-      }
-      const a = Object.assign({}, defaults, args);
+      const defaults = {color: '', label: ''}
+      const a = Object.assign({}, defaults, options);
       
       if (a.color === '') a.color = this.getNextColor();
       this.drawSegment(coords, a.color);
     }
 
-    private drawSegment(coords: Coordinate[], color: string): void {
+    private drawSegment(coords: Coordinate[], color: string|RGBA): void {
       const trCoords = this.transformAll(coords);
       this.cx.strokeStyle = colorize(color);
       this.cx.beginPath();
@@ -356,7 +347,7 @@
       else throw new Error("convertToCoord: Incorrect format. [[x, y],[x, y]]");
     }
 
-    dataFromAPI(url: string, dataFn: Function, args = {}) {
+    dataFromAPI(url: string, dataFn: Function, options = {}) {
 
     }
 
@@ -392,9 +383,9 @@
   // } 
 
     private trackPos() {
+      const that = this;
       this.canvas.removeEventListener('mousemove', displayInfoAtCoord)
       this.canvas.addEventListener('mousemove', displayInfoAtCoord)
-      const that = this;
 
       function displayInfoAtCoord (e) {
         if (that.data.length === 0) return;
@@ -416,7 +407,7 @@
         floater.style.left = globalPoint.x + 5;
         
         const label = document.querySelector('#floater-label');
-        const labelText = closestGraph.graph.args.label;
+        const labelText = closestGraph.graph.options.label;
 
         if (!!labelText) {
           label.style.display = "initial"
@@ -427,7 +418,8 @@
         }
         
         const values = document.querySelector('#floater-values');
-        values.textContent = `${that.settings.grid.xAxisLabel}:${closestPoint.x.toFixed(2)}, ${that.settings.grid.yAxisLabel}:${closestPoint.y.toFixed(2)}`;
+        values.textContent = `${that.settings.grid.xAxisLabel}:${closestPoint.x.toFixed(2)},` +
+                            ` ${that.settings.grid.yAxisLabel}:${closestPoint.y.toFixed(2)}`;
         
         let dot = document.querySelector('#dot');
         dot.style.top = globalPoint.y - 5;
@@ -524,9 +516,12 @@
     const paddingRight = parseInt(getElementProperty(canvas, "paddingRight"));
     const paddingBottom =  parseInt(getElementProperty(canvas, "paddingBottom"));
     const paddingLeft = parseInt(getElementProperty(canvas, "paddingLeft"));
+    
+    const actualWidth = canvas.offsetWidth - paddingLeft - paddingRight;
+    const actualHeight = canvas.offsetHeight - paddingTop - paddingBottom;
 
-    return {x: gridSpace.x * ((canvas.offsetWidth - (paddingLeft + paddingRight)) / canvas.width) + canvas.offsetLeft + paddingLeft, 
-            y: gridSpace.y * ((canvas.offsetHeight - (paddingTop + paddingBottom)) / canvas.height) + canvas.offsetTop + paddingTop}
+    return {x: gridSpace.x * (actualWidth / canvas.width) + canvas.offsetLeft + paddingLeft, 
+            y: gridSpace.y * (actualHeight / canvas.height) + canvas.offsetTop + paddingTop}
   }
 
   function mouseTransform(
