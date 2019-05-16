@@ -1,4 +1,4 @@
-#Use
+# Use
 
 Include a copy of `graphi.js` in your scripts.
 
@@ -44,9 +44,9 @@ g.redrawCanvas();
 ```
 You can use this to implement re-sizing. The canvas width itself *must* be equal to the display size in order to allow for correct mouse-over highlighting. Implement an event-handler which will redraw the canvas as the canvas size changes.
 
-##Configuration
+## Configuration
 
-###Constructor Settings
+### Constructor Settings
 ```js
 options = {
   theme: "default"|"dark"|"light",
@@ -66,7 +66,7 @@ const g = new Graphi(canvas,
 ```
 The grid system allows you to define the lowest value and the highest value. For example a quadrant style grid might range from -50 to 50 on each axis, while another might start at 0 and go to 100.
 
-###Custom Theme Format
+### Custom Theme Format
 ```js
 options = {
   name: string,
@@ -104,7 +104,7 @@ options = {
 }
 ```
 
-###Grid Settings
+### Grid Settings
 ```js
 options = {
   unitsPerTick: number,
@@ -116,8 +116,8 @@ options = {
 g.drawGrid({unitsPerTick: 10, xAxisLabel: "Time", yAxisLabel: "$"});
 ```
 
-##Drawing Methods
-###`drawLine`
+## Drawing Methods
+### `drawLine`
 The `drawLine()` function will draw a line between a sequential series of coordinates.
 ```js
 options = {
@@ -128,7 +128,7 @@ options = {
 g.drawLine([{x, y}, {x, y}, ...], {color, label});
 ```
 
-###`drawPoints`
+### `drawPoints`
 The `drawPoints()` function will take a series of coordinates and render a point at each coordinate.
 ```js
 options = {
@@ -140,7 +140,7 @@ options = {
 g.drawPoints([{x, y}, {x, y}, ...], {radius, color, label});
 ```
 
-###`drawLineWithPoints`
+### `drawLineWithPoints`
 From the makers of `drawLine` and `drawPoints` comes a brand new feature! It does exactly what it sounds like.
 ```js
 options = {
@@ -152,7 +152,7 @@ options = {
 g.drawLineWithPoints([{x, y}, {x, y}, ...], {radius, color, label});
 ```
 
-###`drawBezier`
+### `drawBezier`
 Instead of drawing linear segments between points, or drawing a curve by generating coordinates with an increasingly small segment length, you can use bezier curves to smoothly transition between points.
 
 Bezier curves have a `weight` property which is used to determine how far from each coordinate a control point is placed. This value can simply be left at `1`, and the bezier will automatically adjust itself.
@@ -166,7 +166,7 @@ options = {
 g.drawBezier([{x, y}, {x, y}, ...], {color, weight, label});
 ```
 
-###`genFn`
+### `genFn`
 If you want to generate a series of coordinates from a function which responds to a single numeric input (x) and graph the returned coordinates on the canvas, you can easily do so using the `genFn` method.
 
 ```js
@@ -186,22 +186,22 @@ const xSquared = g.genFn(x => x**2 + 5, {step: .1});
 const sine = g.genFn(x => Math.sin(x), {amplitude: 5, offset: 20});
 const sin2 = g.genFn(x => 5 * Math.sin(x) + 5);
 ```
-##Utility Methods
+## Utility Methods
 
-###`redrawCanvas`
+### `redrawCanvas`
 If you need to repaint the canvas, simply call the `redrawCanvas()` method:
 ```js
 g.redrawCanvas()
 ```
 This may be needed in the event of CSS resizing where you've altered the proportions of the canvas. The method will take the new CSS sizing and set the canvas element to that size, allowing pixels to be re-rendered at the proper proportion instead of being re-scaled.
 
-###`recalcCoordSystems`
+### `recalcCoordSystems`
 While this shouldn't be a concern, if the mouseover highlighting starts skewing, try running this function after whatever events are causing the funkiness.
 ```js
 g.recalcCoordSystems()
 ```
 
-###`clearGrid`
+### `clearGrid`
 Wipes the canvas and redraws the grid only.
 ```js
 g.clearGrid()
